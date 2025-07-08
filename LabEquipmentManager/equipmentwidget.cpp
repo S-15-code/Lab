@@ -2,7 +2,7 @@
 #include "statusitemdelegate.h"  // 确保文件名与实际一致
 #include <QSqlQuery>  // 必须包含此头文件
 #include <QDebug>  // 必须添加这行
-
+#include "mainwindow.h"  // 确保路径正确
 
 EquipmentWidget::EquipmentWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -66,6 +66,7 @@ EquipmentWidget::EquipmentWidget(QWidget *parent) : QWidget(parent) {
 
        view->setItemDelegate(new StatusItemDelegate(this));
 
+
     layout->addLayout(buttonLayout);
 }
 
@@ -76,23 +77,40 @@ void EquipmentWidget::refresh() {
 void EquipmentWidget::addEquipment() {
     int row = model->rowCount();
     model->insertRow(row);
-    model->setData(model->index(row, 1), "新设备"); // name
-    model->setData(model->index(row, 6), 1); // quantity
-    model->setData(model->index(row, 8), "正常"); // status
-    model->setData(model->index(row, 9), 1); // threshold
+    // 设置所有必要字段（根据您的表结构调整索引）
+    model->setData(model->index(row, 1), "新设备");      // name
+    model->setData(model->index(row, 2), "默认型号");     // model
+    model->setData(model->index(row, 3), "SN00001");     // serial_number
+    model->setData(model->index(row, 4), QDate::currentDate().toString("yyyy-MM-dd")); // purchase_date
+    model->setData(model->index(row, 5), 1000.00);       // price
+    model->setData(model->index(row, 6), 1);             // quantity
+    model->setData(model->index(row, 7), "默认位置");     // location
+    model->setData(model->index(row, 8), "正常");         // status
+    model->setData(model->index(row, 9), 1);             // threshold
 
-    if (!model->submitAll()) {
-        QMessageBox::warning(this, "错误", "添加设备失败: " + model->lastError().text());
+    if (model->submitAll()) {
+        QSqlDatabase::database().commit();  // 提交事务
+        qDebug() << "设备添加成功，ID:" << model->data(model->index(row, 0)).toInt();
+    } else {
+        QSqlDatabase::database().rollback();
+        QMessageBox::warning(this, "错误", "添加失败: " + model->lastError().text());
     }
 }
 
+
 void EquipmentWidget::editEquipment() {
     QModelIndex index = view->currentIndex();
-    if (!index.isValid()) {
-        QMessageBox::warning(this, "警告", "请选择要编辑的设备");
-        return;
-    }
-    view->edit(index);
+        if (!index.isValid()) {
+            QMessageBox::warning(this, "警告", "请选择要编辑的设备");
+            return;
+        }
+
+        view->edit(index);
+
+        // 确保编辑后提交
+        if (!model->submitAll()) {
+            QMessageBox::warning(this, "错误", "保存失败: " + model->lastError().text());
+        }
 }
 
 void EquipmentWidget::deleteEquipment() {

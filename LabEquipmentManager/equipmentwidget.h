@@ -10,13 +10,18 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QSqlError>  // 添加 QSqlError 头文件
-
+#include <QFormLayout>
+#include <QSpinBox>
+#include <QDialogButtonBox>
+#include <QDate>
 class EquipmentWidget : public QWidget {
     Q_OBJECT
 
 public:
     explicit EquipmentWidget(QWidget *parent = nullptr);
     void refresh();
+    QSqlTableModel *model;
+
 
 private slots:
     void addEquipment();
@@ -33,10 +38,11 @@ private slots:
 
 
 private:
-    QSqlTableModel *model;
+
     QTableView *view;
     // 新增私有方法
         bool changeStatus(int equipmentId, const QString& newStatus);
+
 };
 
 #endif // EQUIPMENTWIDGET_H

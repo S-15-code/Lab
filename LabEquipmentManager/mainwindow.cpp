@@ -12,6 +12,10 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() {
+    // 确保所有未提交的更改被保存
+    if (equipmentWidget->model->isDirty()) {
+        equipmentWidget->model->submitAll();
+    }
 }
 
 void MainWindow::createMenu() {
