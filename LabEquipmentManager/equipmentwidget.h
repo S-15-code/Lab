@@ -21,7 +21,8 @@ public:
     explicit EquipmentWidget(QWidget *parent = nullptr);
     void refresh();
     QSqlTableModel *model;
-
+    void addMultipleEquipment(const QString& name, const QString& deviceModel, int quantity);
+    QString generateSerialNumber(const QString& name, const QString& deviceModel, int index) ;
 
 private slots:
     void addEquipment();

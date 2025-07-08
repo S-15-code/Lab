@@ -23,7 +23,7 @@ public:
         if (!query.exec("CREATE TABLE IF NOT EXISTS equipment ("
                         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                         "name TEXT NOT NULL,"
-                        "model TEXT,"
+                        "device_model TEXT,"
                         "serial_number TEXT UNIQUE,"
                         "purchase_date TEXT,"
                         "price REAL,"
