@@ -1,0 +1,15 @@
+INPUT(
+./release\main.o
+./release\mainwindow.o
+./release\databaseconnection.o
+./release\equipmentmanager.o
+./release\usermanager.o
+./release\borrowmanager.o
+./release\maintenancemanager.o
+./release\moc_mainwindow.o
+./release\moc_databaseconnection.o
+./release\moc_equipmentmanager.o
+./release\moc_usermanager.o
+./release\moc_borrowmanager.o
+./release\moc_maintenancemanager.o
+);
