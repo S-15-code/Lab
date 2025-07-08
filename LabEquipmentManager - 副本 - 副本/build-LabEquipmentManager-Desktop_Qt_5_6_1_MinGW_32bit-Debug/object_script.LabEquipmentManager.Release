@@ -1,0 +1,13 @@
+INPUT(
+./release\main.o
+./release\mainwindow.o
+./release\equipmentwidget.o
+./release\borrowreturnwidget.o
+./release\maintenancewidget.o
+./release\inventorywidget.o
+./release\moc_mainwindow.o
+./release\moc_equipmentwidget.o
+./release\moc_borrowreturnwidget.o
+./release\moc_maintenancewidget.o
+./release\moc_inventorywidget.o
+);

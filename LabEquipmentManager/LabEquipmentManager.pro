@@ -16,7 +16,8 @@ SOURCES += \
     equipmentwidget.cpp \
     borrowreturnwidget.cpp \
     maintenancewidget.cpp \
-    inventorywidget.cpp
+    inventorywidget.cpp \
+    statusitemdelegate.cpp
 
 HEADERS += \
     mainwindow.h \
@@ -24,4 +25,5 @@ HEADERS += \
     equipmentwidget.h \
     borrowreturnwidget.h \
     maintenancewidget.h \
-    inventorywidget.h
+    inventorywidget.h \
+    statusitemdelegate.h

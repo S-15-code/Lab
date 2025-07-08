@@ -24,9 +24,19 @@ private slots:
     void deleteEquipment();
     void searchEquipment();
 
+    // 新增状态管理槽函数
+       void setEquipmentStatus(const QString& status);
+       void markAsMaintenance();
+       void markAsScrapped();
+       void markAsBorrowed();
+       void markAsReturned();
+
+
 private:
     QSqlTableModel *model;
     QTableView *view;
+    // 新增私有方法
+        bool changeStatus(int equipmentId, const QString& newStatus);
 };
 
 #endif // EQUIPMENTWIDGET_H

@@ -1,4 +1,8 @@
 #include "equipmentwidget.h"
+#include "statusitemdelegate.h"  // 确保文件名与实际一致
+#include <QSqlQuery>  // 必须包含此头文件
+#include <QDebug>  // 必须添加这行
+
 
 EquipmentWidget::EquipmentWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -40,6 +44,27 @@ EquipmentWidget::EquipmentWidget(QWidget *parent) : QWidget(parent) {
     buttonLayout->addWidget(searchButton);
     buttonLayout->addWidget(refreshButton);
     buttonLayout->addStretch();
+
+    // 在按钮布局中添加状态管理按钮
+       QPushButton *maintenanceBtn = new QPushButton("送修");
+       connect(maintenanceBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsMaintenance);
+
+       QPushButton *scrapBtn = new QPushButton("报废");
+       connect(scrapBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsScrapped);
+
+       QPushButton *borrowBtn = new QPushButton("借出");
+       connect(borrowBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsBorrowed);
+
+       QPushButton *returnBtn = new QPushButton("归还");
+       connect(returnBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsReturned);
+
+       // 添加到按钮布局
+       buttonLayout->addWidget(maintenanceBtn);
+       buttonLayout->addWidget(scrapBtn);
+       buttonLayout->addWidget(borrowBtn);
+       buttonLayout->addWidget(returnBtn);
+
+       view->setItemDelegate(new StatusItemDelegate(this));
 
     layout->addLayout(buttonLayout);
 }
@@ -93,5 +118,94 @@ void EquipmentWidget::searchEquipment() {
     if (!keyword.isEmpty()) {
         model->setFilter(QString("name LIKE '%%1%' OR model LIKE '%%1%'").arg(keyword));
         model->select();
+    }
+}
+// equipmentwidget.cpp
+void EquipmentWidget::setEquipmentStatus(const QString& status) {
+    QModelIndex index = view->currentIndex();
+    if (!index.isValid()) {
+        QMessageBox::warning(this, "警告", "请先选择设备");
+        return;
+    }
+
+    int id = model->data(model->index(index.row(), 0)).toInt();
+    QString name = model->data(model->index(index.row(), 1)).toString();
+
+    if (QMessageBox::question(this, "确认",
+        QString("确定要将设备 '%1' 状态改为 '%2' 吗?").arg(name).arg(status)) == QMessageBox::Yes) {
+
+        if (changeStatus(id, status)) {
+            refresh();
+        } else {
+            QMessageBox::warning(this, "错误", "状态更新失败");
+        }
+    }
+}
+
+bool EquipmentWidget::changeStatus(int equipmentId, const QString& newStatus) {
+    QSqlQuery query;
+    query.prepare("UPDATE equipment SET status = ? WHERE id = ?");
+    query.addBindValue(newStatus);
+    query.addBindValue(equipmentId);
+
+    if (!query.exec()) {
+        qDebug() << "状态更新错误:" << query.lastError();
+        return false;
+    }
+    return true;
+}
+
+void EquipmentWidget::markAsMaintenance() {
+    setEquipmentStatus("维修中");
+
+    // 可选：自动创建维修记录
+    QModelIndex index = view->currentIndex();
+    if (index.isValid()) {
+        int id = model->data(model->index(index.row(), 0)).toInt();
+        QSqlQuery query;
+        query.prepare("INSERT INTO maintenance (equipment_id, maintenance_date, status) "
+                     "VALUES (?, datetime('now'), '待处理')");
+        query.addBindValue(id);
+        query.exec();
+    }
+}
+
+void EquipmentWidget::markAsScrapped() {
+    setEquipmentStatus("已报废");
+}
+
+void EquipmentWidget::markAsBorrowed() {
+    QModelIndex index = view->currentIndex();
+    if (!index.isValid()) return;
+
+    int id = model->data(model->index(index.row(), 0)).toInt();
+    QString borrower = QInputDialog::getText(this, "借出登记", "请输入借用人姓名:");
+
+    if (!borrower.isEmpty()) {
+        if (changeStatus(id, "已借出")) {
+            QSqlQuery query;
+            query.prepare("INSERT INTO borrow_return (equipment_id, borrower_name, borrow_date) "
+                         "VALUES (?, ?, datetime('now'))");
+            query.addBindValue(id);
+            query.addBindValue(borrower);
+            query.exec();
+            refresh();
+        }
+    }
+}
+
+void EquipmentWidget::markAsReturned() {
+    QModelIndex index = view->currentIndex();
+    if (!index.isValid()) return;
+
+    int id = model->data(model->index(index.row(), 0)).toInt();
+
+    if (changeStatus(id, "正常")) {
+        QSqlQuery query;
+        query.prepare("UPDATE borrow_return SET return_date = datetime('now') "
+                     "WHERE equipment_id = ? AND return_date IS NULL");
+        query.addBindValue(id);
+        query.exec();
+        refresh();
     }
 }
