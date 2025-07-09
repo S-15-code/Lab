@@ -70,6 +70,10 @@ void BorrowReturnWidget::borrowEquipment() {
     int quantity = query.value(1).toInt();
     QString status = query.value(2).toString();
 
+    if (status == "报废") {
+        QMessageBox::warning(this, "错误", "该设备已报废，无法借用");
+        return;
+    }
     if (status != "正常") {
         QMessageBox::warning(this, "错误", "该设备不可借用（状态：" + status + "）");
         return;

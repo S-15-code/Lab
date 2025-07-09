@@ -30,7 +30,9 @@ public:
                         "quantity INTEGER,"
                         "location TEXT,"
                         "status TEXT,"
-                        "threshold INTEGER)")) {
+                        "threshold INTEGER,"
+                        "scrap_time TEXT,"
+                        "scrap_reason TEXT)")) {
             qDebug() << "Create equipment table error:" << query.lastError();
             return false;
         }

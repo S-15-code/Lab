@@ -28,6 +28,7 @@ private slots:
     void addMaintenance();
     void updateMaintenance();
     void completeMaintenance();
+    void scrapEquipment();
     void searchMaintenance();
 
 private:

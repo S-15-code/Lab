@@ -35,13 +35,7 @@ private slots:
     void editEquipment();
     void deleteEquipment();
     void searchEquipment();
-
-    // 新增状态管理槽函数
-    void setEquipmentStatus(const QString& status);
-    void markAsMaintenance();
-    void markAsScrapped();
-    void markAsBorrowed();
-    void markAsReturned();
+    void showScrapInfo();
 
 private:
     // 新增私有方法

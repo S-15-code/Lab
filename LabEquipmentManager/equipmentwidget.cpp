@@ -5,6 +5,13 @@
 #include <QDebug>
 #include "mainwindow.h"
 #include <QSqlTableModel>
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QDate>
+#include <QTime>
+#include <QSqlDatabase>
+#include <QSqlQueryModel>
+#include <QTimer>
 
 EquipmentWidget::EquipmentWidget(QWidget *parent) : 
     QWidget(parent),
@@ -29,10 +36,12 @@ EquipmentWidget::EquipmentWidget(QWidget *parent) :
     connect(ui->deleteButton, &QPushButton::clicked, this, &EquipmentWidget::deleteEquipment);
     connect(ui->searchButton, &QPushButton::clicked, this, &EquipmentWidget::searchEquipment);
     connect(ui->refreshButton, &QPushButton::clicked, this, &EquipmentWidget::refresh);
-    connect(ui->maintenanceBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsMaintenance);
-    connect(ui->scrapBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsScrapped);
-    connect(ui->borrowBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsBorrowed);
-    connect(ui->returnBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsReturned);
+    connect(ui->scrapInfoButton, &QPushButton::clicked, this, &EquipmentWidget::showScrapInfo);
+    // 删除与维修、借还相关的按钮连接
+    // connect(ui->maintenanceBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsMaintenance);
+    // connect(ui->scrapBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsScrapped);
+    // connect(ui->borrowBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsBorrowed);
+    // connect(ui->returnBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsReturned);
 
     ui->tableView->setItemDelegate(new StatusItemDelegate(this));
 }
@@ -201,16 +210,32 @@ void EquipmentWidget::searchEquipment() {
         model->select();
         return;
     }
-    // 修正字段名为device_model，使用参数化查询防止SQL注入
-    QString filter = QString("name LIKE '%%1%' OR device_model LIKE '%%1%' OR serial_number LIKE '%%1%'").arg(keyword);
+    // 修正字段名为model
+    QSqlQuery query;
+    QString sql = "SELECT id FROM equipment WHERE name LIKE ? OR model LIKE ? OR serial_number LIKE ?";
+    query.prepare(sql);
+    QString likeStr = "%" + keyword + "%";
+    query.addBindValue(likeStr);
+    query.addBindValue(likeStr);
+    query.addBindValue(likeStr);
+    if (!query.exec()) {
+        QMessageBox::warning(this, "错误", "搜索失败: " + query.lastError().text() + "\nSQL: " + sql);
+        return;
+    }
+    QStringList idList;
+    while (query.next()) {
+        idList << query.value(0).toString();
+    }
+    if (idList.isEmpty()) {
+        QMessageBox::information(this, "搜索结果", "未找到匹配的设备记录");
+        model->setFilter("");
+        model->select();
+        return;
+    }
+    QString filter = QString("id IN (%1)").arg(idList.join(","));
     model->setFilter(filter);
     model->select();
-    // 搜索结果提示
-    if (model->rowCount() == 0) {
-        QMessageBox::information(this, "搜索结果", "未找到匹配的设备记录");
-    } else {
-        QMessageBox::information(this, "搜索结果", QString("找到 %1 条匹配的设备记录").arg(model->rowCount()));
-    }
+    QMessageBox::information(this, "搜索结果", QString("找到 %1 条匹配的设备记录").arg(model->rowCount()));
 }
 
 bool EquipmentWidget::changeStatus(int equipmentId, const QString& newStatus) {
@@ -226,77 +251,17 @@ bool EquipmentWidget::changeStatus(int equipmentId, const QString& newStatus) {
     return true;
 }
 
-void EquipmentWidget::setEquipmentStatus(const QString& status) {
-    QModelIndex index = ui->tableView->currentIndex();
-    if (!index.isValid()) {
-        QMessageBox::warning(this, "警告", "请先选择设备");
+void EquipmentWidget::showScrapInfo() {
+    QSqlDatabase::database().commit();
+    // 只显示报废设备
+    model->setFilter("status = '报废'");
+    model->select();
+    int count = model->rowCount();
+    if (count == 0) {
+        QMessageBox::information(this, "报废信息", "当前没有报废的设备");
+        model->setFilter("");
+        model->select();
         return;
     }
-
-    int id = model->data(model->index(index.row(), 0)).toInt();
-    QString name = model->data(model->index(index.row(), 1)).toString();
-
-    if (QMessageBox::question(this, "确认",
-        QString("确定要将设备 '%1' 状态改为 '%2' 吗?").arg(name).arg(status)) == QMessageBox::Yes)
-    {
-        if (changeStatus(id, status)) {
-            refresh();
-        } else {
-            QMessageBox::warning(this, "错误", "状态更新失败");
-        }
-    }
-}
-void EquipmentWidget::markAsMaintenance() {
-    setEquipmentStatus("维修中");
-
-    // 可选：自动创建维修记录
-    QModelIndex index = ui->tableView->currentIndex();
-    if (index.isValid()) {
-        int id = model->data(model->index(index.row(), 0)).toInt();
-        QSqlQuery query;
-        query.prepare("INSERT INTO maintenance (equipment_id, maintenance_date, status) "
-                     "VALUES (?, datetime('now'), '待处理')");
-        query.addBindValue(id);
-        query.exec();
-    }
-}
-
-void EquipmentWidget::markAsScrapped() {
-    setEquipmentStatus("已报废");
-}
-
-void EquipmentWidget::markAsBorrowed() {
-    QModelIndex index = ui->tableView->currentIndex();
-    if (!index.isValid()) return;
-
-    int id = model->data(model->index(index.row(), 0)).toInt();
-    QString borrower = QInputDialog::getText(this, "借出登记", "请输入借用人姓名:");
-
-    if (!borrower.isEmpty()) {
-        if (changeStatus(id, "已借出")) {
-            QSqlQuery query;
-            query.prepare("INSERT INTO borrow_return (equipment_id, borrower_name, borrow_date) "
-                         "VALUES (?, ?, datetime('now'))");
-            query.addBindValue(id);
-            query.addBindValue(borrower);
-            query.exec();
-            refresh();
-        }
-    }
-}
-
-void EquipmentWidget::markAsReturned() {
-    QModelIndex index = ui->tableView->currentIndex();
-    if (!index.isValid()) return;
-
-    int id = model->data(model->index(index.row(), 0)).toInt();
-
-    if (changeStatus(id, "正常")) {
-        QSqlQuery query;
-        query.prepare("UPDATE borrow_return SET return_date = datetime('now') "
-                     "WHERE equipment_id = ? AND return_date IS NULL");
-        query.addBindValue(id);
-        query.exec();
-        refresh();
-    }
+    QMessageBox::information(this, "报废信息", QString("共有 %1 台报废设备，点击刷新可恢复全部列表").arg(count));
 }

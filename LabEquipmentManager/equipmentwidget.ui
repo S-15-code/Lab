@@ -62,30 +62,9 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="maintenanceBtn">
+      <widget class="QPushButton" name="scrapInfoButton">
        <property name="text">
-        <string>送修</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="scrapBtn">
-       <property name="text">
-        <string>報廢</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="borrowBtn">
-       <property name="text">
-        <string>借出</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="returnBtn">
-       <property name="text">
-        <string>歸還</string>
+        <string>查看报废设备</string>
        </property>
       </widget>
      </item>

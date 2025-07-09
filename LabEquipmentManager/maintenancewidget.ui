@@ -11,6 +11,7 @@
      <item><widget class="QPushButton" name="addButton"><property name="text"><string>添加维修</string></property></widget></item>
      <item><widget class="QPushButton" name="updateButton"><property name="text"><string>更新状态</string></property></widget></item>
      <item><widget class="QPushButton" name="completeButton"><property name="text"><string>完成维修</string></property></widget></item>
+     <item><widget class="QPushButton" name="scrapButton"><property name="text"><string>报废处理</string></property></widget></item>
      <item><widget class="QPushButton" name="searchButton"><property name="text"><string>搜索</string></property></widget></item>
      <item><widget class="QPushButton" name="refreshButton"><property name="text"><string>刷新</string></property></widget></item>
      <item><spacer name="horizontalSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeType"><enum>QSizePolicy::Expanding</enum></property></spacer></item>
