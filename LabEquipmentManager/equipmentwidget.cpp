@@ -72,7 +72,8 @@ EquipmentWidget::EquipmentWidget(QWidget *parent) : QWidget(parent) {
 }
 
 void EquipmentWidget::refresh() {
-    model->select();
+    model->setFilter(""); // 清除过滤条件
+    model->select();      // 刷新所有数据
 }
 
 
@@ -223,12 +224,21 @@ void EquipmentWidget::deleteEquipment() {
 }
 
 void EquipmentWidget::searchEquipment() {
-    QString keyword = QInputDialog::getText(this, "搜索设备",
-        "请输入设备名称、型号或序列号:");
-    if (!keyword.isEmpty()) {
-        model->setFilter(QString("name LIKE '%%1%' OR device_model LIKE '%%1%' OR serial_number LIKE '%%1%'")
-                      .arg(keyword));  // 注意这里也使用了 device_model
+    QString keyword = QInputDialog::getText(this, "搜索设备", "请输入设备名称、型号或序列号:").trimmed();
+    if (keyword.isEmpty()) {
+        model->setFilter("");
         model->select();
+        return;
+    }
+    // 修正字段名为model
+    QString filter = QString("name LIKE '%%" + keyword + "%%' OR model LIKE '%%" + keyword + "%%' OR serial_number LIKE '%%" + keyword + "%%'");
+    model->setFilter(filter);
+    model->select();
+    // 搜索结果提示
+    if (model->rowCount() == 0) {
+        QMessageBox::information(this, "搜索结果", "未找到匹配的设备记录");
+    } else {
+        QMessageBox::information(this, "搜索结果", QString("找到 %1 条匹配的设备记录").arg(model->rowCount()));
     }
 }
 

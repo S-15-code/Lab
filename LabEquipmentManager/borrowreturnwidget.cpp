@@ -47,9 +47,11 @@ BorrowReturnWidget::BorrowReturnWidget(QWidget *parent) : QWidget(parent) {
 }
 
 void BorrowReturnWidget::refresh() {
-    model->select();
+    model->setFilter(""); // 清除 filter
+    if (!model->select()) {
+        QMessageBox::warning(this, "错误", "刷新失败: " + model->lastError().text());
+    }
 }
-
 void BorrowReturnWidget::borrowEquipment() {
     bool ok;
     QString equipmentName = QInputDialog::getText(this, "借用设备", "请输入设备名称:", QLineEdit::Normal, "", &ok);
@@ -114,10 +116,19 @@ void BorrowReturnWidget::returnEquipment() {
     }
 
     int recordId = model->data(model->index(index.row(), 0)).toInt();
-    int equipmentId = model->data(model->index(index.row(), 1)).toInt();
+    
+    // 正确获取equipment_id，它应该是borrow_return表中的第二列（索引1）
+    // 但由于设置了关系，我们需要通过查询来获取
+    QSqlQuery query;
+    query.prepare("SELECT equipment_id FROM borrow_return WHERE id = ?");
+    query.addBindValue(recordId);
+    if (!query.exec() || !query.next()) {
+        QMessageBox::warning(this, "错误", "查询记录失败");
+        return;
+    }
+    int equipmentId = query.value(0).toInt();
 
     // 检查是否已归还
-    QSqlQuery query;
     query.prepare("SELECT return_date FROM borrow_return WHERE id = ?");
     query.addBindValue(recordId);
     if (!query.exec() || !query.next()) {
@@ -152,8 +163,56 @@ void BorrowReturnWidget::returnEquipment() {
 
 void BorrowReturnWidget::searchRecords() {
     QString keyword = QInputDialog::getText(this, "搜索记录", "请输入设备名称或借用人:");
-    if (!keyword.isEmpty()) {
-        model->setFilter(QString("equipment.name LIKE '%%1%' OR borrower_name LIKE '%%1%'").arg(keyword));
+    if (keyword.isEmpty()) {
+        // 如果搜索关键词为空，清除过滤器并刷新
+        model->setFilter("");
         model->select();
+        return;
     }
+
+    // 使用更可靠的方法：先查询匹配的记录ID，然后设置过滤器
+    QSqlQuery query;
+    query.prepare(
+        "SELECT DISTINCT br.id FROM borrow_return br "
+        "LEFT JOIN equipment eq ON br.equipment_id = eq.id "
+        "WHERE eq.name LIKE ? OR br.borrower_name LIKE ?"
+    );
+    query.addBindValue("%" + keyword + "%");
+    query.addBindValue("%" + keyword + "%");
+    
+    if (!query.exec()) {
+        QMessageBox::warning(this, "错误", "搜索查询失败: " + query.lastError().text());
+        return;
+    }
+    
+    // 收集匹配的记录ID
+    QList<int> matchingIds;
+    while (query.next()) {
+        matchingIds.append(query.value(0).toInt());
+    }
+    
+    if (matchingIds.isEmpty()) {
+        QMessageBox::information(this, "搜索结果", "未找到匹配的记录");
+        return;
+    }
+    
+    // 构建ID过滤器，明确指定表名
+    QString idFilter = "borrow_return.id IN (";
+    for (int i = 0; i < matchingIds.size(); ++i) {
+        if (i > 0) idFilter += ",";
+        idFilter += QString::number(matchingIds[i]);
+    }
+    idFilter += ")";
+    
+    // 设置过滤器
+    model->setFilter(idFilter);
+    
+    // 刷新模型数据
+    if (!model->select()) {
+        QMessageBox::warning(this, "错误", "搜索失败: " + model->lastError().text());
+        return;
+    }
+    
+    // 显示搜索结果
+    QMessageBox::information(this, "搜索结果", QString("找到 %1 条匹配的记录").arg(model->rowCount()));
 }

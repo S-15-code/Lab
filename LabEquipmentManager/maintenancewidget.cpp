@@ -59,24 +59,38 @@ void MaintenanceWidget::refresh() {
 
 void MaintenanceWidget::addMaintenance() {
     bool ok;
+
+    // 输入设备名称
     QString equipmentName = QInputDialog::getText(this, "添加维修", "请输入设备名称:", QLineEdit::Normal, "", &ok);
-    if (!ok || equipmentName.isEmpty()) return;
+    if (!ok || equipmentName.isEmpty()) {
+        return; // 用户取消或输入为空
+    }
 
-    QString issue = QInputDialog::getText(this, "添加维修", "请输入问题描述:", QLineEdit::Normal, "", &ok);
-    if (!ok || issue.isEmpty()) return;
-
-    // 查询设备ID
+    // 检查设备是否存在
     QSqlQuery query;
     query.prepare("SELECT id FROM equipment WHERE name = ?");
     query.addBindValue(equipmentName);
-    if (!query.exec() || !query.next()) {
-        QMessageBox::warning(this, "错误", "设备不存在或查询失败");
+
+    if (!query.exec()) {
+        QMessageBox::warning(this, "错误", "查询设备失败: " + query.lastError().text());
+        return;
+    }
+
+    if (!query.next()) {
+        // 没有找到对应的设备
+        QMessageBox::critical(this, "错误", "设备不存在，请重新选择或添加设备。");
         return;
     }
 
     int equipmentId = query.value(0).toInt();
 
-    // 添加维修记录
+    // 输入问题描述
+    QString issue = QInputDialog::getText(this, "添加维修", "请输入问题描述:", QLineEdit::Normal, "", &ok);
+    if (!ok || issue.isEmpty()) {
+        return;
+    }
+
+    // 插入维修记录
     query.prepare("INSERT INTO maintenance (equipment_id, maintenance_date, issue_description, status) "
                   "VALUES (?, datetime('now'), ?, '待维修')");
     query.addBindValue(equipmentId);
