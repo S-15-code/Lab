@@ -9,20 +9,26 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QInputDialog>
-#include <QSqlError>  // 添加 QSqlError 头文件
+#include <QSqlError>
 #include <QFormLayout>
 #include <QSpinBox>
 #include <QDialogButtonBox>
 #include <QDate>
+
+namespace Ui {
+class EquipmentWidget;
+}
+
 class EquipmentWidget : public QWidget {
     Q_OBJECT
 
 public:
     explicit EquipmentWidget(QWidget *parent = nullptr);
+    ~EquipmentWidget();
     void refresh();
     QSqlTableModel *model;
     void addMultipleEquipment(const QString& name, const QString& deviceModel, int quantity);
-    QString generateSerialNumber(const QString& name, const QString& deviceModel, int index) ;
+    QString generateSerialNumber(const QString& name, const QString& deviceModel, int index);
 
 private slots:
     void addEquipment();
@@ -31,19 +37,16 @@ private slots:
     void searchEquipment();
 
     // 新增状态管理槽函数
-       void setEquipmentStatus(const QString& status);
-       void markAsMaintenance();
-       void markAsScrapped();
-       void markAsBorrowed();
-       void markAsReturned();
-
+    void setEquipmentStatus(const QString& status);
+    void markAsMaintenance();
+    void markAsScrapped();
+    void markAsBorrowed();
+    void markAsReturned();
 
 private:
-
-    QTableView *view;
     // 新增私有方法
-        bool changeStatus(int equipmentId, const QString& newStatus);
-
+    bool changeStatus(int equipmentId, const QString& newStatus);
+    Ui::EquipmentWidget *ui;
 };
 
 #endif // EQUIPMENTWIDGET_H

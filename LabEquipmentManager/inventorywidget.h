@@ -8,15 +8,20 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QSqlQuery>  // 添加这行
-#include <QSqlError>  // 建议同时添加
-#include <QMessageBox>  // 添加这行
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QMessageBox>
+
+namespace Ui {
+class InventoryWidget;
+}
 
 class InventoryWidget : public QWidget {
     Q_OBJECT
 
 public:
     explicit InventoryWidget(QWidget *parent = nullptr);
+    ~InventoryWidget();
     void refresh();
 
 private slots:
@@ -24,8 +29,7 @@ private slots:
 
 private:
     QSqlQueryModel *model;
-    QTableView *view;
-    QLabel *statusLabel;
+    Ui::InventoryWidget *ui;
 };
 
 #endif // INVENTORYWIDGET_H

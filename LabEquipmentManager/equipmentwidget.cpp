@@ -1,74 +1,45 @@
 #include "equipmentwidget.h"
-#include "statusitemdelegate.h"  // 确保文件名与实际一致
-#include <QSqlQuery>  // 必须包含此头文件
-#include <QDebug>  // 必须添加这行
-#include "mainwindow.h"  // 确保路径正确
+#include "ui_equipmentwidget.h"
+#include "statusitemdelegate.h"
+#include <QSqlQuery>
+#include <QDebug>
+#include "mainwindow.h"
 #include <QSqlTableModel>
 
-EquipmentWidget::EquipmentWidget(QWidget *parent) : QWidget(parent) {
-    QVBoxLayout *layout = new QVBoxLayout(this);
-
+EquipmentWidget::EquipmentWidget(QWidget *parent) : 
+    QWidget(parent),
+    ui(new Ui::EquipmentWidget)
+{
+    ui->setupUi(this);
+    
     // 创建表格视图
     model = new QSqlTableModel(this);
     model->setTable("equipment");
     model->setEditStrategy(QSqlTableModel::OnManualSubmit);
     model->select();
 
-    view = new QTableView;
-    view->setModel(model);
-    view->setSelectionMode(QAbstractItemView::SingleSelection);
-    view->setSelectionBehavior(QAbstractItemView::SelectRows);
-    view->resizeColumnsToContents();
-    layout->addWidget(view);
+    ui->tableView->setModel(model);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->resizeColumnsToContents();
 
-    // 创建按钮
-    QHBoxLayout *buttonLayout = new QHBoxLayout;
+    // 连接信号和槽
+    connect(ui->addButton, &QPushButton::clicked, this, &EquipmentWidget::addEquipment);
+    connect(ui->editButton, &QPushButton::clicked, this, &EquipmentWidget::editEquipment);
+    connect(ui->deleteButton, &QPushButton::clicked, this, &EquipmentWidget::deleteEquipment);
+    connect(ui->searchButton, &QPushButton::clicked, this, &EquipmentWidget::searchEquipment);
+    connect(ui->refreshButton, &QPushButton::clicked, this, &EquipmentWidget::refresh);
+    connect(ui->maintenanceBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsMaintenance);
+    connect(ui->scrapBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsScrapped);
+    connect(ui->borrowBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsBorrowed);
+    connect(ui->returnBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsReturned);
 
-    QPushButton *addButton = new QPushButton("添加");
-    connect(addButton, &QPushButton::clicked, this, &EquipmentWidget::addEquipment);
+    ui->tableView->setItemDelegate(new StatusItemDelegate(this));
+}
 
-    QPushButton *editButton = new QPushButton("编辑");
-    connect(editButton, &QPushButton::clicked, this, &EquipmentWidget::editEquipment);
-
-    QPushButton *deleteButton = new QPushButton("删除");
-    connect(deleteButton, &QPushButton::clicked, this, &EquipmentWidget::deleteEquipment);
-
-    QPushButton *searchButton = new QPushButton("搜索");
-    connect(searchButton, &QPushButton::clicked, this, &EquipmentWidget::searchEquipment);
-
-    QPushButton *refreshButton = new QPushButton("刷新");
-    connect(refreshButton, &QPushButton::clicked, this, &EquipmentWidget::refresh);
-
-    buttonLayout->addWidget(addButton);
-    buttonLayout->addWidget(editButton);
-    buttonLayout->addWidget(deleteButton);
-    buttonLayout->addWidget(searchButton);
-    buttonLayout->addWidget(refreshButton);
-    buttonLayout->addStretch();
-
-    // 在按钮布局中添加状态管理按钮
-       QPushButton *maintenanceBtn = new QPushButton("送修");
-       connect(maintenanceBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsMaintenance);
-
-       QPushButton *scrapBtn = new QPushButton("报废");
-       connect(scrapBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsScrapped);
-
-       QPushButton *borrowBtn = new QPushButton("借出");
-       connect(borrowBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsBorrowed);
-
-       QPushButton *returnBtn = new QPushButton("归还");
-       connect(returnBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsReturned);
-
-       // 添加到按钮布局
-       buttonLayout->addWidget(maintenanceBtn);
-       buttonLayout->addWidget(scrapBtn);
-       buttonLayout->addWidget(borrowBtn);
-       buttonLayout->addWidget(returnBtn);
-
-       view->setItemDelegate(new StatusItemDelegate(this));
-
-
-    layout->addLayout(buttonLayout);
+EquipmentWidget::~EquipmentWidget()
+{
+    delete ui;
 }
 
 void EquipmentWidget::refresh() {
@@ -183,13 +154,13 @@ void EquipmentWidget::addMultipleEquipment(const QString& name,const QString& de
     }
 }
 void EquipmentWidget::editEquipment() {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
         if (!index.isValid()) {
             QMessageBox::warning(this, "警告", "请选择要编辑的设备");
             return;
         }
 
-        view->edit(index);
+        ui->tableView->edit(index);
 
         // 确保编辑后提交
         if (!model->submitAll()) {
@@ -204,7 +175,7 @@ QString EquipmentWidget::generateSerialNumber(const QString& name, const QString
         .arg(index, 4, 10, QLatin1Char('0'));
 }
 void EquipmentWidget::deleteEquipment() {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) return;
 
     QString serialNumber = model->data(model->index(index.row(), 3)).toString();
@@ -230,8 +201,8 @@ void EquipmentWidget::searchEquipment() {
         model->select();
         return;
     }
-    // 修正字段名为model
-    QString filter = QString("name LIKE '%%" + keyword + "%%' OR model LIKE '%%" + keyword + "%%' OR serial_number LIKE '%%" + keyword + "%%'");
+    // 修正字段名为device_model，使用参数化查询防止SQL注入
+    QString filter = QString("name LIKE '%%1%' OR device_model LIKE '%%1%' OR serial_number LIKE '%%1%'").arg(keyword);
     model->setFilter(filter);
     model->select();
     // 搜索结果提示
@@ -256,7 +227,7 @@ bool EquipmentWidget::changeStatus(int equipmentId, const QString& newStatus) {
 }
 
 void EquipmentWidget::setEquipmentStatus(const QString& status) {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) {
         QMessageBox::warning(this, "警告", "请先选择设备");
         return;
@@ -279,7 +250,7 @@ void EquipmentWidget::markAsMaintenance() {
     setEquipmentStatus("维修中");
 
     // 可选：自动创建维修记录
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (index.isValid()) {
         int id = model->data(model->index(index.row(), 0)).toInt();
         QSqlQuery query;
@@ -295,7 +266,7 @@ void EquipmentWidget::markAsScrapped() {
 }
 
 void EquipmentWidget::markAsBorrowed() {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) return;
 
     int id = model->data(model->index(index.row(), 0)).toInt();
@@ -315,7 +286,7 @@ void EquipmentWidget::markAsBorrowed() {
 }
 
 void EquipmentWidget::markAsReturned() {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) return;
 
     int id = model->data(model->index(index.row(), 0)).toInt();

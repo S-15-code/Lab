@@ -1,5 +1,5 @@
 #ifndef BORROWRETURNWIDGET_H
-#define BORRORRETURNWIDGET_H
+#define BORROWRETURNWIDGET_H
 
 #include <QWidget>
 #include <QSqlRelationalTableModel>
@@ -10,14 +10,19 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QDateEdit>
-#include <QSqlQuery>  // 添加 QSqlQuery 头文件
-#include <QSqlError>  // 添加 QSqlError 头文件
+#include <QSqlQuery>
+#include <QSqlError>
+
+namespace Ui {
+class BorrowReturnWidget;
+}
 
 class BorrowReturnWidget : public QWidget {
     Q_OBJECT
 
 public:
     explicit BorrowReturnWidget(QWidget *parent = nullptr);
+    ~BorrowReturnWidget();
     void refresh();
 
 private slots:
@@ -27,7 +32,7 @@ private slots:
 
 private:
     QSqlRelationalTableModel *model;
-    QTableView *view;
+    Ui::BorrowReturnWidget *ui;
 };
 
 #endif // BORROWRETURNWIDGET_H

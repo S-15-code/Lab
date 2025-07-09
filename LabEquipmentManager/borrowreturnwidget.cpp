@@ -1,7 +1,11 @@
 #include "borrowreturnwidget.h"
+#include "ui_borrowreturnwidget.h"
 
-BorrowReturnWidget::BorrowReturnWidget(QWidget *parent) : QWidget(parent) {
-    QVBoxLayout *layout = new QVBoxLayout(this);
+BorrowReturnWidget::BorrowReturnWidget(QWidget *parent) : 
+    QWidget(parent),
+    ui(new Ui::BorrowReturnWidget)
+{
+    ui->setupUi(this);
 
     // 创建表格视图
     model = new QSqlRelationalTableModel(this);
@@ -15,35 +19,21 @@ BorrowReturnWidget::BorrowReturnWidget(QWidget *parent) : QWidget(parent) {
     model->setHeaderData(5, Qt::Horizontal, "用途");
     model->select();
 
-    view = new QTableView;
-    view->setModel(model);
-    view->setSelectionMode(QAbstractItemView::SingleSelection);
-    view->setSelectionBehavior(QAbstractItemView::SelectRows);
-    view->resizeColumnsToContents();
-    layout->addWidget(view);
+    ui->tableView->setModel(model);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->resizeColumnsToContents();
 
-    // 创建按钮
-    QHBoxLayout *buttonLayout = new QHBoxLayout;
+    // 连接信号和槽
+    connect(ui->borrowButton, &QPushButton::clicked, this, &BorrowReturnWidget::borrowEquipment);
+    connect(ui->returnButton, &QPushButton::clicked, this, &BorrowReturnWidget::returnEquipment);
+    connect(ui->searchButton, &QPushButton::clicked, this, &BorrowReturnWidget::searchRecords);
+    connect(ui->refreshButton, &QPushButton::clicked, this, &BorrowReturnWidget::refresh);
+}
 
-    QPushButton *borrowButton = new QPushButton("借用");
-    connect(borrowButton, &QPushButton::clicked, this, &BorrowReturnWidget::borrowEquipment);
-
-    QPushButton *returnButton = new QPushButton("归还");
-    connect(returnButton, &QPushButton::clicked, this, &BorrowReturnWidget::returnEquipment);
-
-    QPushButton *searchButton = new QPushButton("搜索");
-    connect(searchButton, &QPushButton::clicked, this, &BorrowReturnWidget::searchRecords);
-
-    QPushButton *refreshButton = new QPushButton("刷新");
-    connect(refreshButton, &QPushButton::clicked, this, &BorrowReturnWidget::refresh);
-
-    buttonLayout->addWidget(borrowButton);
-    buttonLayout->addWidget(returnButton);
-    buttonLayout->addWidget(searchButton);
-    buttonLayout->addWidget(refreshButton);
-    buttonLayout->addStretch();
-
-    layout->addLayout(buttonLayout);
+BorrowReturnWidget::~BorrowReturnWidget()
+{
+    delete ui;
 }
 
 void BorrowReturnWidget::refresh() {
@@ -68,7 +58,7 @@ void BorrowReturnWidget::borrowEquipment() {
 
     // 查询设备ID、数量、状态
     QSqlQuery query;
-    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND model = ?");
+    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND device_model = ?");
     query.addBindValue(equipmentName);
     query.addBindValue(equipmentModel);
     if (!query.exec() || !query.next()) {
@@ -124,7 +114,7 @@ void BorrowReturnWidget::borrowEquipment() {
 }
 
 void BorrowReturnWidget::returnEquipment() {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) {
         QMessageBox::warning(this, "警告", "请选择要归还的记录");
         return;
@@ -189,7 +179,7 @@ void BorrowReturnWidget::searchRecords() {
         return;
     }
 
-    // 使用更可靠的方法：先查询匹配的记录ID，然后设置过滤器
+    // 使用JOIN查询进行搜索
     QSqlQuery query;
     query.prepare(
         "SELECT DISTINCT br.id FROM borrow_return br "
@@ -215,7 +205,7 @@ void BorrowReturnWidget::searchRecords() {
         return;
     }
     
-    // 构建ID过滤器，明确指定表名
+    // 构建ID过滤器
     QString idFilter = "borrow_return.id IN (";
     for (int i = 0; i < matchingIds.size(); ++i) {
         if (i > 0) idFilter += ",";

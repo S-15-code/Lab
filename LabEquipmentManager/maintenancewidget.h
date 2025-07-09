@@ -9,14 +9,19 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QInputDialog>
-#include <QSqlQuery>  // 添加 QSqlQuery 头文件
-#include <QSqlError>  // 用于错误处理
+#include <QSqlQuery>
+#include <QSqlError>
+
+namespace Ui {
+class MaintenanceWidget;
+}
 
 class MaintenanceWidget : public QWidget {
     Q_OBJECT
 
 public:
     explicit MaintenanceWidget(QWidget *parent = nullptr);
+    ~MaintenanceWidget();
     void refresh();
 
 private slots:
@@ -27,7 +32,7 @@ private slots:
 
 private:
     QSqlTableModel *model;
-    QTableView *view;
+    Ui::MaintenanceWidget *ui;
 };
 
 #endif // MAINTENANCEWIDGET_H

@@ -1,9 +1,13 @@
 #include "maintenancewidget.h"
+#include "ui_maintenancewidget.h"
 #include <QDate>
 #include <QDateTime>
 
-MaintenanceWidget::MaintenanceWidget(QWidget *parent) : QWidget(parent) {
-    QVBoxLayout *layout = new QVBoxLayout(this);
+MaintenanceWidget::MaintenanceWidget(QWidget *parent) : 
+    QWidget(parent),
+    ui(new Ui::MaintenanceWidget)
+{
+    ui->setupUi(this);
 
     // 创建表格视图
     model = new QSqlTableModel(this);
@@ -21,39 +25,22 @@ MaintenanceWidget::MaintenanceWidget(QWidget *parent) : QWidget(parent) {
     model->setHeaderData(9, Qt::Horizontal, "状态");
     model->select();
 
-    view = new QTableView;
-    view->setModel(model);
-    view->setSelectionMode(QAbstractItemView::SingleSelection);
-    view->setSelectionBehavior(QAbstractItemView::SelectRows);
-    view->resizeColumnsToContents();
-    layout->addWidget(view);
+    ui->tableView->setModel(model);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->resizeColumnsToContents();
 
-    // 创建按钮
-    QHBoxLayout *buttonLayout = new QHBoxLayout;
+    // 连接信号和槽
+    connect(ui->addButton, &QPushButton::clicked, this, &MaintenanceWidget::addMaintenance);
+    connect(ui->updateButton, &QPushButton::clicked, this, &MaintenanceWidget::updateMaintenance);
+    connect(ui->completeButton, &QPushButton::clicked, this, &MaintenanceWidget::completeMaintenance);
+    connect(ui->searchButton, &QPushButton::clicked, this, &MaintenanceWidget::searchMaintenance);
+    connect(ui->refreshButton, &QPushButton::clicked, this, &MaintenanceWidget::refresh);
+}
 
-    QPushButton *addButton = new QPushButton("添加维修");
-    connect(addButton, &QPushButton::clicked, this, &MaintenanceWidget::addMaintenance);
-
-    QPushButton *updateButton = new QPushButton("更新状态");
-    connect(updateButton, &QPushButton::clicked, this, &MaintenanceWidget::updateMaintenance);
-
-    QPushButton *completeButton = new QPushButton("完成维修");
-    connect(completeButton, &QPushButton::clicked, this, &MaintenanceWidget::completeMaintenance);
-
-    QPushButton *searchButton = new QPushButton("搜索");
-    connect(searchButton, &QPushButton::clicked, this, &MaintenanceWidget::searchMaintenance);
-
-    QPushButton *refreshButton = new QPushButton("刷新");
-    connect(refreshButton, &QPushButton::clicked, this, &MaintenanceWidget::refresh);
-
-    buttonLayout->addWidget(addButton);
-    buttonLayout->addWidget(updateButton);
-    buttonLayout->addWidget(completeButton);
-    buttonLayout->addWidget(searchButton);
-    buttonLayout->addWidget(refreshButton);
-    buttonLayout->addStretch();
-
-    layout->addLayout(buttonLayout);
+MaintenanceWidget::~MaintenanceWidget()
+{
+    delete ui;
 }
 
 void MaintenanceWidget::refresh() {
@@ -107,7 +94,7 @@ void MaintenanceWidget::addMaintenance() {
 }
 
 void MaintenanceWidget::updateMaintenance() {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) {
         QMessageBox::warning(this, "警告", "请选择要更新的记录");
         return;
@@ -143,7 +130,7 @@ void MaintenanceWidget::updateMaintenance() {
 }
 
 void MaintenanceWidget::completeMaintenance() {
-    QModelIndex index = view->currentIndex();
+    QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) {
         QMessageBox::warning(this, "警告", "请选择要完成的记录");
         return;
@@ -183,12 +170,12 @@ void MaintenanceWidget::searchMaintenance() {
         model->select();
         return;
     }
-    // 直接在视图字段上模糊匹配
+    // 修正SQL语法，使用正确的参数化查询
     QString filter = QString(
-        "equipment_name LIKE '%%1%%' OR "
-        "serial_number LIKE '%%1%%' OR "
-        "issue_description LIKE '%%1%%' OR "
-        "maintenance_date LIKE '%%1%%'"
+        "equipment_name LIKE '%%1%' OR "
+        "serial_number LIKE '%%1%' OR "
+        "issue_description LIKE '%%1%' OR "
+        "maintenance_date LIKE '%%1%'"
     ).arg(keyword);
 
     model->setFilter(filter);
