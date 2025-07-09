@@ -29,6 +29,7 @@ BorrowReturnWidget::BorrowReturnWidget(QWidget *parent) :
     connect(ui->returnButton, &QPushButton::clicked, this, &BorrowReturnWidget::returnEquipment);
     connect(ui->searchButton, &QPushButton::clicked, this, &BorrowReturnWidget::searchRecords);
     connect(ui->refreshButton, &QPushButton::clicked, this, &BorrowReturnWidget::refresh);
+    connect(ui->borrowRankingButton, &QPushButton::clicked, this, &BorrowReturnWidget::showBorrowRanking);
 }
 
 BorrowReturnWidget::~BorrowReturnWidget()
@@ -56,9 +57,9 @@ void BorrowReturnWidget::borrowEquipment() {
     QString purpose = QInputDialog::getText(this, "借用设备", "请输入用途:", QLineEdit::Normal, "", &ok);
     if (!ok) return;
 
-    // 查询设备ID、数量、状态
+    // 查询设备ID、数量、状态，字段名修正为model
     QSqlQuery query;
-    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND device_model = ?");
+    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND model = ?");
     query.addBindValue(equipmentName);
     query.addBindValue(equipmentModel);
     if (!query.exec() || !query.next()) {
@@ -228,4 +229,49 @@ void BorrowReturnWidget::searchRecords() {
     
     // 显示搜索结果
     QMessageBox::information(this, "搜索结果", QString("找到 %1 条匹配的记录").arg(model->rowCount()));
+}
+
+void BorrowReturnWidget::showBorrowRanking() {
+    QSqlQuery query;
+    query.exec("SELECT e.name, e.model, COUNT(*) as borrow_count "
+               "FROM borrow_return br "
+               "LEFT JOIN equipment e ON br.equipment_id = e.id "
+               "WHERE br.equipment_id IS NOT NULL "
+               "GROUP BY br.equipment_id "
+               "ORDER BY borrow_count DESC "
+               "LIMIT 5");
+    QVector<QVector<QString>> data;
+    while (query.next()) {
+        QVector<QString> row;
+        for (int i = 0; i < 3; ++i) {
+            row.append(query.value(i).toString());
+        }
+        // 只显示有设备名称的行
+        if (!row[0].isEmpty())
+            data.append(row);
+    }
+    if (data.isEmpty()) {
+        QMessageBox::information(this, "借用排行", "当前没有有效的借用记录");
+        return;
+    }
+    // 只显示实际有数据的行，最多5名
+    QDialog dlg(this);
+    dlg.setWindowTitle("借用频率排行");
+    QVBoxLayout *layout = new QVBoxLayout(&dlg);
+    QTableWidget *table = new QTableWidget(data.size(), 3, &dlg);
+    table->setHorizontalHeaderLabels(QStringList() << "设备名称" << "型号" << "借用次数");
+    table->verticalHeader()->setVisible(false);
+    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    table->setSelectionMode(QAbstractItemView::NoSelection);
+    for (int i = 0; i < data.size(); ++i) {
+        for (int j = 0; j < 3; ++j) {
+            table->setItem(i, j, new QTableWidgetItem(data[i][j]));
+        }
+    }
+    table->resizeColumnsToContents();
+    layout->addWidget(table);
+    QPushButton *okBtn = new QPushButton("确定", &dlg);
+    connect(okBtn, &QPushButton::clicked, &dlg, &QDialog::accept);
+    layout->addWidget(okBtn);
+    dlg.exec();
 }

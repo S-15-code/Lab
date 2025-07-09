@@ -36,6 +36,7 @@ private slots:
     void deleteEquipment();
     void searchEquipment();
     void showScrapInfo();
+    void showStatistics();
 
 private:
     // 新增私有方法

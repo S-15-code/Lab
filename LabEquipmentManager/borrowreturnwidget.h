@@ -12,7 +12,7 @@
 #include <QDateEdit>
 #include <QSqlQuery>
 #include <QSqlError>
-
+#include <QTableWidget>
 namespace Ui {
 class BorrowReturnWidget;
 }
@@ -29,6 +29,7 @@ private slots:
     void borrowEquipment();
     void returnEquipment();
     void searchRecords();
+    void showBorrowRanking();
 
 private:
     QSqlRelationalTableModel *model;

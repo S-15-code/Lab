@@ -37,6 +37,7 @@ EquipmentWidget::EquipmentWidget(QWidget *parent) :
     connect(ui->searchButton, &QPushButton::clicked, this, &EquipmentWidget::searchEquipment);
     connect(ui->refreshButton, &QPushButton::clicked, this, &EquipmentWidget::refresh);
     connect(ui->scrapInfoButton, &QPushButton::clicked, this, &EquipmentWidget::showScrapInfo);
+    connect(ui->statisticsButton, &QPushButton::clicked, this, &EquipmentWidget::showStatistics);
     // 删除与维修、借还相关的按钮连接
     // connect(ui->maintenanceBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsMaintenance);
     // connect(ui->scrapBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsScrapped);
@@ -123,7 +124,7 @@ void EquipmentWidget::addEquipment() {
         model->setData(model->index(row, 6), 1);             // quantity (单台)
         model->setData(model->index(row, 7), "西南交大");     // location
         model->setData(model->index(row, 8), "正常");         // status
-        model->setData(model->index(row, 9), 1);             // threshold
+        model->setData(model->index(row, 9), 2);             // threshold
     }
 
     // 6. 提交事务
@@ -264,4 +265,25 @@ void EquipmentWidget::showScrapInfo() {
         return;
     }
     QMessageBox::information(this, "报废信息", QString("共有 %1 台报废设备，点击刷新可恢复全部列表").arg(count));
+}
+
+void EquipmentWidget::showStatistics() {
+    QSqlQuery query;
+    // 统计设备总数
+    int total = 0;
+    if (query.exec("SELECT COUNT(*) FROM equipment")) {
+        if (query.next()) total = query.value(0).toInt();
+    }
+    // 统计各状态数量
+    QMap<QString, int> statusMap;
+    if (query.exec("SELECT status, COUNT(*) FROM equipment GROUP BY status")) {
+        while (query.next()) {
+            statusMap[query.value(0).toString()] = query.value(1).toInt();
+        }
+    }
+    QString statText = QString("设备总数：%1\n").arg(total);
+    for (auto it = statusMap.begin(); it != statusMap.end(); ++it) {
+        statText += QString("%1：%2\n").arg(it.key()).arg(it.value());
+    }
+    QMessageBox::information(this, "设备统计", statText);
 }

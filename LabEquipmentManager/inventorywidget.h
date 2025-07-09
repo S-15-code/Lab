@@ -11,6 +11,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QMessageBox>
+#include <QTableWidget>
 
 namespace Ui {
 class InventoryWidget;
@@ -26,6 +27,7 @@ public:
 
 private slots:
     void checkInventory();
+    void showWarning();
 
 private:
     QSqlQueryModel *model;
