@@ -32,22 +32,22 @@ InventoryWidget::InventoryWidget(QWidget *parent) : QWidget(parent) {
 }
 
 void InventoryWidget::refresh() {
-    model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', MIN(threshold) AS '预警阈值' FROM equipment GROUP BY model");
+    model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY model");
     view->setModel(model);
     statusLabel->setText("库存状态: 未检查");
 }
 
 void InventoryWidget::checkInventory() {
     QSqlQueryModel *warningModel = new QSqlQueryModel(this);
-    QString sql = "SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', MIN(threshold) AS '预警阈值' "
-                  "FROM equipment GROUP BY model HAVING SUM(quantity) <= MIN(threshold)";
+    QString sql = "SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' "
+                  "FROM equipment GROUP BY model HAVING SUM(quantity) <= 2";
     warningModel->setQuery(sql);
 
     if (warningModel->rowCount() == 0) {
         statusLabel->setText("库存状态: 所有设备型号库存充足");
         QMessageBox::information(this, "库存预警", "所有设备型号库存充足");
         // 显示全部型号库存
-        model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', MIN(threshold) AS '预警阈值' FROM equipment GROUP BY model");
+        model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY model");
         view->setModel(model);
     } else {
         statusLabel->setText("库存状态: 以下设备型号库存预警");
