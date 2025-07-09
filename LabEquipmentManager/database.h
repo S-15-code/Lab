@@ -64,6 +64,15 @@ public:
             return false;
         }
 
+        // 创建维修与设备联查视图，调整字段顺序
+        query.exec("DROP VIEW IF EXISTS v_maintenance_full");
+        query.exec(
+            "CREATE VIEW IF NOT EXISTS v_maintenance_full AS "
+            "SELECT m.id, e.name AS equipment_name, e.serial_number, m.maintenance_date, m.issue_description, m.repair_description, m.cost, m.technician, m.completion_date, m.status "
+            "FROM maintenance m "
+            "LEFT JOIN equipment e ON m.equipment_id = e.id"
+        );
+
         return true;
     }
 };

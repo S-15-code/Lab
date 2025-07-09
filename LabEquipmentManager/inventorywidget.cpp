@@ -32,37 +32,27 @@ InventoryWidget::InventoryWidget(QWidget *parent) : QWidget(parent) {
 }
 
 void InventoryWidget::refresh() {
-    model->setQuery("SELECT name, quantity, threshold FROM equipment");
-    model->setHeaderData(0, Qt::Horizontal, "设备名称");
-    model->setHeaderData(1, Qt::Horizontal, "库存数量");
-    model->setHeaderData(2, Qt::Horizontal, "预警阈值");
-
+    model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', MIN(threshold) AS '预警阈值' FROM equipment GROUP BY model");
+    view->setModel(model);
     statusLabel->setText("库存状态: 未检查");
 }
 
 void InventoryWidget::checkInventory() {
-    QSqlQuery query;
-    query.exec("SELECT name, quantity, threshold FROM equipment WHERE quantity <= threshold");
+    QSqlQueryModel *warningModel = new QSqlQueryModel(this);
+    QString sql = "SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', MIN(threshold) AS '预警阈值' "
+                  "FROM equipment GROUP BY model HAVING SUM(quantity) <= MIN(threshold)";
+    warningModel->setQuery(sql);
 
-    if (query.size() == 0) {
-        statusLabel->setText("库存状态: 所有设备库存充足");
-        return;
+    if (warningModel->rowCount() == 0) {
+        statusLabel->setText("库存状态: 所有设备型号库存充足");
+        QMessageBox::information(this, "库存预警", "所有设备型号库存充足");
+        // 显示全部型号库存
+        model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', MIN(threshold) AS '预警阈值' FROM equipment GROUP BY model");
+        view->setModel(model);
+    } else {
+        statusLabel->setText("库存状态: 以下设备型号库存预警");
+        view->setModel(warningModel);
+        model = warningModel; // 让model指向当前预警model，便于后续刷新
+        QMessageBox::warning(this, "库存预警", "以下设备型号库存不足，请注意表格显示！");
     }
-
-    QStringList warningItems;
-    while (query.next()) {
-        warningItems << QString("%1 (库存: %2, 阈值: %3)")
-                        .arg(query.value(0).toString())
-                        .arg(query.value(1).toInt())
-                        .arg(query.value(2).toInt());
-    }
-
-    statusLabel->setText("库存状态: 以下设备库存不足");
-    model->setQuery(query.lastQuery());
-    model->setHeaderData(0, Qt::Horizontal, "设备名称");
-    model->setHeaderData(1, Qt::Horizontal, "库存数量");
-    model->setHeaderData(2, Qt::Horizontal, "预警阈值");
-
-    QMessageBox::warning(this, "库存警告",
-                        "以下设备库存不足:\n" + warningItems.join("\n"));
 }

@@ -1,21 +1,24 @@
 #include "maintenancewidget.h"
+#include <QDate>
+#include <QDateTime>
 
 MaintenanceWidget::MaintenanceWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *layout = new QVBoxLayout(this);
 
     // 创建表格视图
-    model = new QSqlRelationalTableModel(this);
-    model->setTable("maintenance");
-    model->setRelation(1, QSqlRelation("equipment", "id", "name"));
+    model = new QSqlTableModel(this);
+    model->setTable("v_maintenance_full");
     model->setEditStrategy(QSqlTableModel::OnManualSubmit);
+    model->setHeaderData(0, Qt::Horizontal, "id");
     model->setHeaderData(1, Qt::Horizontal, "设备名称");
-    model->setHeaderData(2, Qt::Horizontal, "报修日期");
-    model->setHeaderData(3, Qt::Horizontal, "问题描述");
-    model->setHeaderData(4, Qt::Horizontal, "维修描述");
-    model->setHeaderData(5, Qt::Horizontal, "费用");
-    model->setHeaderData(6, Qt::Horizontal, "维修人员");
-    model->setHeaderData(7, Qt::Horizontal, "完成日期");
-    model->setHeaderData(8, Qt::Horizontal, "状态");
+    model->setHeaderData(2, Qt::Horizontal, "设备序列号");
+    model->setHeaderData(3, Qt::Horizontal, "报修日期");
+    model->setHeaderData(4, Qt::Horizontal, "问题描述");
+    model->setHeaderData(5, Qt::Horizontal, "维修描述");
+    model->setHeaderData(6, Qt::Horizontal, "费用");
+    model->setHeaderData(7, Qt::Horizontal, "维修人员");
+    model->setHeaderData(8, Qt::Horizontal, "完成日期");
+    model->setHeaderData(9, Qt::Horizontal, "状态");
     model->select();
 
     view = new QTableView;
@@ -54,55 +57,53 @@ MaintenanceWidget::MaintenanceWidget(QWidget *parent) : QWidget(parent) {
 }
 
 void MaintenanceWidget::refresh() {
-    model->select();
+    model->setFilter(""); // 清除过滤条件
+    model->select();      // 刷新所有数据
 }
 
 void MaintenanceWidget::addMaintenance() {
     bool ok;
-
-    // 输入设备名称
+    // 设备名称
     QString equipmentName = QInputDialog::getText(this, "添加维修", "请输入设备名称:", QLineEdit::Normal, "", &ok);
-    if (!ok || equipmentName.isEmpty()) {
-        return; // 用户取消或输入为空
-    }
-
-    // 检查设备是否存在
+    if (!ok || equipmentName.isEmpty()) return;
+    // 序列号
+    QString serialNumber = QInputDialog::getText(this, "添加维修", "请输入设备序列号:", QLineEdit::Normal, "", &ok);
+    if (!ok || serialNumber.isEmpty()) return;
+    // 查找设备ID
     QSqlQuery query;
-    query.prepare("SELECT id FROM equipment WHERE name = ?");
+    query.prepare("SELECT id FROM equipment WHERE name = ? AND serial_number = ?");
     query.addBindValue(equipmentName);
-
-    if (!query.exec()) {
-        QMessageBox::warning(this, "错误", "查询设备失败: " + query.lastError().text());
+    query.addBindValue(serialNumber);
+    if (!query.exec() || !query.next()) {
+        QMessageBox::warning(this, "错误", "未找到对应设备");
         return;
     }
-
-    if (!query.next()) {
-        // 没有找到对应的设备
-        QMessageBox::critical(this, "错误", "设备不存在，请重新选择或添加设备。");
-        return;
-    }
-
     int equipmentId = query.value(0).toInt();
-
-    // 输入问题描述
-    QString issue = QInputDialog::getText(this, "添加维修", "请输入问题描述:", QLineEdit::Normal, "", &ok);
-    if (!ok || issue.isEmpty()) {
-        return;
-    }
-
-    // 插入维修记录
-    query.prepare("INSERT INTO maintenance (equipment_id, maintenance_date, issue_description, status) "
-                  "VALUES (?, datetime('now'), ?, '待维修')");
+    // 报修日期（精确到分钟）
+    QString defaultDateTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm");
+    QString maintenanceDate = QInputDialog::getText(
+        this, "添加维修", "请输入报修日期(格式: yyyy-MM-dd HH:mm):",
+        QLineEdit::Normal, defaultDateTime, &ok);
+    if (!ok || maintenanceDate.isEmpty()) return;
+    // 损坏原因（问题描述）
+    QString issue = QInputDialog::getText(this, "添加维修", "请输入损坏原因:", QLineEdit::Normal, "", &ok);
+    if (!ok || issue.isEmpty()) return;
+    // 插入记录，其它字段留空
+    query.prepare("INSERT INTO maintenance (equipment_id, maintenance_date, issue_description, status) VALUES (?, ?, ?, '待维修')");
     query.addBindValue(equipmentId);
+    query.addBindValue(maintenanceDate);
     query.addBindValue(issue);
-
     if (!query.exec()) {
         QMessageBox::warning(this, "错误", "添加维修记录失败: " + query.lastError().text());
         return;
     }
-
+    // 同步设备状态为“维修中”
+    QSqlQuery updateQuery;
+    updateQuery.prepare("UPDATE equipment SET status = '维修中' WHERE id = ?");
+    updateQuery.addBindValue(equipmentId);
+    updateQuery.exec();
     refresh();
-    QMessageBox::information(this, "成功", "维修记录添加成功");
+    QMessageBox::information(this, "成功", "维修记录添加成功，设备状态已同步为维修中");
 }
 
 void MaintenanceWidget::updateMaintenance() {
@@ -160,14 +161,42 @@ void MaintenanceWidget::completeMaintenance() {
         return;
     }
 
+    // 获取该维修记录对应的设备ID
+    query.prepare("SELECT equipment_id FROM maintenance WHERE id = ?");
+    query.addBindValue(recordId);
+    if (query.exec() && query.next()) {
+        int equipmentId = query.value(0).toInt();
+        QSqlQuery updateQuery;
+        updateQuery.prepare("UPDATE equipment SET status = '正常' WHERE id = ?");
+        updateQuery.addBindValue(equipmentId);
+        updateQuery.exec();
+    }
+
     refresh();
-    QMessageBox::information(this, "成功", "维修记录已完成");
+    QMessageBox::information(this, "成功", "维修记录已完成，设备状态已同步为正常");
 }
 
 void MaintenanceWidget::searchMaintenance() {
-    QString keyword = QInputDialog::getText(this, "搜索维修", "请输入设备名称或状态:");
-    if (!keyword.isEmpty()) {
-        model->setFilter(QString("equipment.name LIKE '%%1%' OR maintenance.status LIKE '%%1%'").arg(keyword));
+    QString keyword = QInputDialog::getText(this, "搜索维修", "请输入设备名称、序列号、损坏原因或报修日期:");
+    if (keyword.isEmpty()) {
+        model->setFilter("");
         model->select();
+        return;
+    }
+    // 直接在视图字段上模糊匹配
+    QString filter = QString(
+        "equipment_name LIKE '%%1%%' OR "
+        "serial_number LIKE '%%1%%' OR "
+        "issue_description LIKE '%%1%%' OR "
+        "maintenance_date LIKE '%%1%%'"
+    ).arg(keyword);
+
+    model->setFilter(filter);
+    model->select();
+
+    if (model->rowCount() == 0) {
+        QMessageBox::information(this, "搜索结果", "未找到匹配的维修记录");
+    } else {
+        QMessageBox::information(this, "搜索结果", QString("找到 %1 条匹配的维修记录").arg(model->rowCount()));
     }
 }

@@ -26,7 +26,7 @@ private slots:
     void searchMaintenance();
 
 private:
-    QSqlRelationalTableModel *model;
+    QSqlTableModel *model;
     QTableView *view;
 };
 
