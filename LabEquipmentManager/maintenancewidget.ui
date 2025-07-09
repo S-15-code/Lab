@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MaintenanceWidget</class>
+ <widget class="QWidget" name="MaintenanceWidget">
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QTableView" name="tableView"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <item><widget class="QPushButton" name="addButton"><property name="text"><string>添加维修</string></property></widget></item>
+     <item><widget class="QPushButton" name="updateButton"><property name="text"><string>更新状态</string></property></widget></item>
+     <item><widget class="QPushButton" name="completeButton"><property name="text"><string>完成维修</string></property></widget></item>
+     <item><widget class="QPushButton" name="searchButton"><property name="text"><string>搜索</string></property></widget></item>
+     <item><widget class="QPushButton" name="refreshButton"><property name="text"><string>刷新</string></property></widget></item>
+     <item><spacer name="horizontalSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeType"><enum>QSizePolicy::Expanding</enum></property></spacer></item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui> 

@@ -57,16 +57,20 @@ void BorrowReturnWidget::borrowEquipment() {
     QString equipmentName = QInputDialog::getText(this, "借用设备", "请输入设备名称:", QLineEdit::Normal, "", &ok);
     if (!ok || equipmentName.isEmpty()) return;
 
+    QString equipmentModel = QInputDialog::getText(this, "借用设备", "请输入设备型号:", QLineEdit::Normal, "", &ok);
+    if (!ok || equipmentModel.isEmpty()) return;
+
     QString borrower = QInputDialog::getText(this, "借用设备", "请输入借用人姓名:", QLineEdit::Normal, "", &ok);
     if (!ok || borrower.isEmpty()) return;
 
     QString purpose = QInputDialog::getText(this, "借用设备", "请输入用途:", QLineEdit::Normal, "", &ok);
     if (!ok) return;
 
-    // 查询设备ID
+    // 查询设备ID、数量、状态
     QSqlQuery query;
-    query.prepare("SELECT id, quantity FROM equipment WHERE name = ?");
+    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND model = ?");
     query.addBindValue(equipmentName);
+    query.addBindValue(equipmentModel);
     if (!query.exec() || !query.next()) {
         QMessageBox::warning(this, "错误", "设备不存在或查询失败");
         return;
@@ -74,7 +78,12 @@ void BorrowReturnWidget::borrowEquipment() {
 
     int equipmentId = query.value(0).toInt();
     int quantity = query.value(1).toInt();
+    QString status = query.value(2).toString();
 
+    if (status != "正常") {
+        QMessageBox::warning(this, "错误", "该设备不可借用（状态：" + status + "）");
+        return;
+    }
     if (quantity <= 0) {
         QMessageBox::warning(this, "错误", "该设备库存不足");
         return;
@@ -104,6 +113,12 @@ void BorrowReturnWidget::borrowEquipment() {
         return;
     }
 
+    // 借用成功后，更新设备状态为已借出
+    QSqlQuery updateQuery;
+    updateQuery.prepare("UPDATE equipment SET status = '已借出' WHERE id = ?");
+    updateQuery.addBindValue(equipmentId);
+    updateQuery.exec();
+
     refresh();
     QMessageBox::information(this, "成功", "设备借用成功");
 }
@@ -116,9 +131,7 @@ void BorrowReturnWidget::returnEquipment() {
     }
 
     int recordId = model->data(model->index(index.row(), 0)).toInt();
-    
-    // 正确获取equipment_id，它应该是borrow_return表中的第二列（索引1）
-    // 但由于设置了关系，我们需要通过查询来获取
+    // 正确获取equipment_id
     QSqlQuery query;
     query.prepare("SELECT equipment_id FROM borrow_return WHERE id = ?");
     query.addBindValue(recordId);
@@ -156,6 +169,12 @@ void BorrowReturnWidget::returnEquipment() {
         QMessageBox::warning(this, "错误", "更新库存失败");
         return;
     }
+
+    // 归还成功后，更新设备状态为正常
+    QSqlQuery updateQuery;
+    updateQuery.prepare("UPDATE equipment SET status = '正常' WHERE id = ?");
+    updateQuery.addBindValue(equipmentId);
+    updateQuery.exec();
 
     refresh();
     QMessageBox::information(this, "成功", "设备归还成功");

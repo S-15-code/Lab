@@ -27,3 +27,10 @@ HEADERS += \
     maintenancewidget.h \
     inventorywidget.h \
     statusitemdelegate.h
+
+FORMS += \
+    mainwindow.ui \
+    equipmentwidget.ui \
+    borrowreturnwidget.ui \
+    maintenancewidget.ui \
+    inventorywidget.ui
