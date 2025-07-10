@@ -1,7 +1,8 @@
 #include "inventorywidget.h"
 #include "ui_inventorywidget.h"
+#include <QMessageBox>
 
-InventoryWidget::InventoryWidget(QWidget *parent) : 
+InventoryWidget::InventoryWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::InventoryWidget)
 {
@@ -16,6 +17,9 @@ InventoryWidget::InventoryWidget(QWidget *parent) :
     // 连接信号和槽
     connect(ui->checkButton, &QPushButton::clicked, this, &InventoryWidget::checkInventory);
     connect(ui->refreshButton, &QPushButton::clicked, this, &InventoryWidget::refresh);
+
+    // 初始刷新数据
+    refresh();
 }
 
 InventoryWidget::~InventoryWidget()
@@ -24,66 +28,56 @@ InventoryWidget::~InventoryWidget()
 }
 
 void InventoryWidget::refresh() {
-    model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY model");
-    ui->tableView->setModel(model);
+    // 显示所有正常状态设备的型号分组统计，统计总库存
+    QString queryStr = "SELECT model AS '设备型号', "
+                       "MIN(name) AS '设备名称', "
+                       "SUM(quantity) AS '正常库存', "
+                       "2 AS '预警阈值' "
+                       "FROM equipment "
+                       "WHERE status = '正常' "
+                       "GROUP BY model "
+                       "ORDER BY SUM(quantity) ASC";  // 按库存升序排列
+
+    model->setQuery(queryStr);
+    if (model->lastError().isValid()) {
+        QMessageBox::critical(this, "数据库错误", "查询失败: " + model->lastError().text());
+    }
+    ui->tableView->resizeColumnsToContents();
     ui->statusLabel->setText("库存状态: 未检查");
 }
 
 void InventoryWidget::checkInventory() {
+    // 查询库存不足的设备型号（正常状态且总库存<=2）
+    QString warningQuery = "SELECT model AS '设备型号', "
+                           "MIN(name) AS '设备名称', "
+                           "SUM(quantity) AS '正常库存', "
+                           "2 AS '预警阈值' "
+                           "FROM equipment "
+                           "WHERE status = '正常' "
+                           "GROUP BY model "
+                           "HAVING SUM(quantity) <= 2 "
+                           "ORDER BY SUM(quantity) ASC";
+
     QSqlQueryModel *warningModel = new QSqlQueryModel(this);
-    QString sql = "SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' "
-                  "FROM equipment GROUP BY model HAVING SUM(quantity) <= 2";
-    warningModel->setQuery(sql);
+    warningModel->setQuery(warningQuery);
+    if (warningModel->lastError().isValid()) {
+        QMessageBox::critical(this, "数据库错误", "查询失败: " + warningModel->lastError().text());
+        delete warningModel;
+        return;
+    }
 
     if (warningModel->rowCount() == 0) {
         ui->statusLabel->setText("库存状态: 所有设备型号库存充足");
-        QMessageBox::information(this, "库存预警", "所有设备型号库存充足");
-        // 显示全部型号库存
-        model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY model");
-        ui->tableView->setModel(model);
+        QMessageBox::information(this, "库存检查", "所有设备型号库存充足，没有低于预警阈值的型号。");
+        refresh();  // 刷新显示全部数据
+        delete warningModel;
     } else {
-        ui->statusLabel->setText("库存状态: 以下设备型号库存预警");
+        ui->statusLabel->setText(QString("库存状态: 发现 %1 个型号库存不足").arg(warningModel->rowCount()));
         ui->tableView->setModel(warningModel);
-        model = warningModel; // 让model指向当前预警model，便于后续刷新
-        QMessageBox::warning(this, "库存预警", "以下设备型号库存不足，请注意表格显示！");
+        ui->tableView->resizeColumnsToContents();
+        // 不要delete warningModel，因为tableView还在用
+        QMessageBox::warning(this, "库存预警",
+                            QString("发现 %1 个设备型号库存不足！\n请及时补充库存或联系供应商。")
+                                .arg(warningModel->rowCount()));
     }
-}
-
-void InventoryWidget::showWarning() {
-    QSqlQuery query;
-    // 以设备型号为单位，统计总库存小于等于2的型号
-    query.exec("SELECT model, MIN(name), SUM(quantity) FROM equipment GROUP BY model HAVING SUM(quantity) <= 2");
-    QVector<QVector<QString>> data;
-    while (query.next()) {
-        QVector<QString> row;
-        row.append(query.value(1).toString()); // 设备名称
-        row.append(query.value(0).toString()); // 设备型号
-        row.append(query.value(2).toString()); // 总库存
-        row.append("2"); // 预警阈值
-        data.append(row);
-    }
-    if (data.isEmpty()) {
-        QMessageBox::information(this, "库存预警", "当前没有低于阈值的设备型号");
-        return;
-    }
-    // 用表格窗口显示
-    QDialog dlg(this);
-    dlg.setWindowTitle("库存预警设备");
-    QVBoxLayout *layout = new QVBoxLayout(&dlg);
-    QTableWidget *table = new QTableWidget(data.size(), 4, &dlg);
-    table->setHorizontalHeaderLabels(QStringList() << "设备名称" << "设备型号" << "总库存" << "预警阈值");
-    table->verticalHeader()->setVisible(false);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setSelectionMode(QAbstractItemView::NoSelection);
-    for (int i = 0; i < data.size(); ++i) {
-        for (int j = 0; j < 4; ++j) {
-            table->setItem(i, j, new QTableWidgetItem(data[i][j]));
-        }
-    }
-    table->resizeColumnsToContents();
-    layout->addWidget(table);
-    QPushButton *okBtn = new QPushButton("确定", &dlg);
-    connect(okBtn, &QPushButton::clicked, &dlg, &QDialog::accept);
-    layout->addWidget(okBtn);
-    dlg.exec();
 }

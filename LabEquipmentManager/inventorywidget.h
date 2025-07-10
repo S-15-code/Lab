@@ -27,7 +27,6 @@ public:
 
 private slots:
     void checkInventory();
-    void showWarning();
 
 private:
     QSqlQueryModel *model;

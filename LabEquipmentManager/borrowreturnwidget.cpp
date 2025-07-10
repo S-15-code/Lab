@@ -240,20 +240,22 @@ void BorrowReturnWidget::searchRecords() {
 
 void BorrowReturnWidget::showBorrowRanking() {
     QSqlQuery query;
-    // 修正SQL，字段名为model
-    query.exec("SELECT e.name, e.model, COUNT(*) as borrow_count "
-               "FROM borrow_return br "
-               "LEFT JOIN equipment e ON br.equipment_id = e.id "
-               "GROUP BY br.equipment_id "
-               "ORDER BY borrow_count DESC "
-               "LIMIT 5");
+    // 统计所有有关联设备的借用记录，按设备分组
+    query.exec(
+        "SELECT e.name, e.model, COUNT(br.id) as borrow_count "
+        "FROM borrow_return br "
+        "LEFT JOIN equipment e ON br.equipment_id = e.id "
+        "WHERE e.name IS NOT NULL AND e.model IS NOT NULL "
+        "GROUP BY br.equipment_id "
+        "ORDER BY borrow_count DESC "
+        "LIMIT 5"
+    );
     QVector<QVector<QString>> data;
     while (query.next()) {
         QVector<QString> row;
         for (int i = 0; i < 3; ++i) {
             row.append(query.value(i).toString());
         }
-        // 只显示有设备名称的行
         if (!row[0].isEmpty())
             data.append(row);
     }
@@ -261,7 +263,6 @@ void BorrowReturnWidget::showBorrowRanking() {
         QMessageBox::information(this, "借用排行", "当前没有有效的借用记录");
         return;
     }
-    // 只显示实际有数据的行，最多5名
     QDialog dlg(this);
     dlg.setWindowTitle("借用频率排行");
     QVBoxLayout *layout = new QVBoxLayout(&dlg);

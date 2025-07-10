@@ -30,6 +30,19 @@ EquipmentWidget::EquipmentWidget(QWidget *parent) :
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->resizeColumnsToContents();
 
+    // 设置表头为中文
+    model->setHeaderData(1, Qt::Horizontal, "设备名称");
+    model->setHeaderData(2, Qt::Horizontal, "型号");
+    model->setHeaderData(3, Qt::Horizontal, "序列号");
+    model->setHeaderData(4, Qt::Horizontal, "采购日期");
+    model->setHeaderData(5, Qt::Horizontal, "价格");
+    model->setHeaderData(6, Qt::Horizontal, "库存");
+    model->setHeaderData(7, Qt::Horizontal, "存放地点");
+    model->setHeaderData(8, Qt::Horizontal, "状态");
+    model->setHeaderData(9, Qt::Horizontal, "预警阈值");
+    model->setHeaderData(10, Qt::Horizontal, "报废时间");
+    model->setHeaderData(11, Qt::Horizontal, "报废原因");
+
     // 连接信号和槽
     connect(ui->addButton, &QPushButton::clicked, this, &EquipmentWidget::addEquipment);
     connect(ui->editButton, &QPushButton::clicked, this, &EquipmentWidget::editEquipment);
