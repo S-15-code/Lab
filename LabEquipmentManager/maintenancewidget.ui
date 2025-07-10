@@ -14,6 +14,7 @@
      <item><widget class="QPushButton" name="scrapButton"><property name="text"><string>报废处理</string></property></widget></item>
      <item><widget class="QPushButton" name="searchButton"><property name="text"><string>搜索</string></property></widget></item>
      <item><widget class="QPushButton" name="refreshButton"><property name="text"><string>刷新</string></property></widget></item>
+     <item><widget class="QPushButton" name="deleteButton"><property name="text"><string>删除</string></property></widget></item>
      <item><spacer name="horizontalSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeType"><enum>QSizePolicy::Expanding</enum></property></spacer></item>
     </layout>
    </item>

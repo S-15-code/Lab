@@ -117,14 +117,15 @@ void EquipmentWidget::addEquipment() {
 
         // 设置各字段数据
         model->setData(model->index(row, 1), name);          // name
-        model->setData(model->index(row, 2), deviceModel);   // model
+        model->setData(model->index(row, 2), deviceModel);   // device_model
         model->setData(model->index(row, 3), serialNumber);  // serial_number
-        model->setData(model->index(row, 4), QDate::currentDate().toString("yyyy-MM-dd")); // 登记日期
+        model->setData(model->index(row, 4), QDate::currentDate().toString("yyyy-MM-dd")); // purchase_date
         model->setData(model->index(row, 5), 1000.00);       // price
-        model->setData(model->index(row, 6), 1);             // quantity (单台)
+        model->setData(model->index(row, 6), 1);             // quantity
         model->setData(model->index(row, 7), "西南交大");     // location
         model->setData(model->index(row, 8), "正常");         // status
         model->setData(model->index(row, 9), 2);             // threshold
+        // 10: scrap_time, 11: scrap_reason 可留空
     }
 
     // 6. 提交事务

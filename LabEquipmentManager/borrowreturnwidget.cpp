@@ -46,74 +46,81 @@ void BorrowReturnWidget::refresh() {
 void BorrowReturnWidget::borrowEquipment() {
     bool ok;
     QString equipmentName = QInputDialog::getText(this, "借用设备", "请输入设备名称:", QLineEdit::Normal, "", &ok);
-    if (!ok || equipmentName.isEmpty()) return;
-
+    if (!ok || equipmentName.trimmed().isEmpty()) return;
     QString equipmentModel = QInputDialog::getText(this, "借用设备", "请输入设备型号:", QLineEdit::Normal, "", &ok);
-    if (!ok || equipmentModel.isEmpty()) return;
-
+    if (!ok || equipmentModel.trimmed().isEmpty()) return;
     QString borrower = QInputDialog::getText(this, "借用设备", "请输入借用人姓名:", QLineEdit::Normal, "", &ok);
-    if (!ok || borrower.isEmpty()) return;
-
+    if (!ok || borrower.trimmed().isEmpty()) return;
     QString purpose = QInputDialog::getText(this, "借用设备", "请输入用途:", QLineEdit::Normal, "", &ok);
     if (!ok) return;
 
-    // 查询设备ID、数量、状态，字段名修正为model
-    QSqlQuery query;
-    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND model = ?");
-    query.addBindValue(equipmentName);
-    query.addBindValue(equipmentModel);
+    QSqlDatabase db = QSqlDatabase::database();
+    db.transaction();
+    QSqlQuery query(db);
+    // 查找设备，忽略大小写和空格，且状态为正常且库存>0
+    query.prepare("SELECT id, quantity FROM equipment WHERE TRIM(LOWER(name)) = TRIM(LOWER(?)) AND TRIM(LOWER(model)) = TRIM(LOWER(?)) AND status = '正常' AND quantity > 0");
+    query.addBindValue(equipmentName.trimmed().toLower());
+    query.addBindValue(equipmentModel.trimmed().toLower());
     if (!query.exec() || !query.next()) {
-        QMessageBox::warning(this, "错误", "设备不存在或查询失败");
+        db.rollback();
+        // 新增：调试信息，显示所有设备信息
+        QSqlQuery debugQuery(db);
+        QString allEquipments;
+        if (debugQuery.exec("SELECT name, device_model, status, quantity FROM equipment")) {
+            while (debugQuery.next()) {
+                allEquipments += QString("名称:%1 型号:%2 状态:%3 库存:%4\n")
+                    .arg(debugQuery.value(0).toString())
+                    .arg(debugQuery.value(1).toString())
+                    .arg(debugQuery.value(2).toString())
+                    .arg(debugQuery.value(3).toString());
+            }
+        }
+        QMessageBox::warning(this, "错误", QString("设备不存在、状态不可借或库存不足\n\n输入名称: %1\n输入型号: %2\n\n所有设备:\n%3")
+            .arg(equipmentName.trimmed())
+            .arg(equipmentModel.trimmed())
+            .arg(allEquipments));
         return;
     }
-
     int equipmentId = query.value(0).toInt();
     int quantity = query.value(1).toInt();
-    QString status = query.value(2).toString();
 
-    if (status == "报废") {
-        QMessageBox::warning(this, "错误", "该设备已报废，无法借用");
-        return;
-    }
-    if (status != "正常") {
-        QMessageBox::warning(this, "错误", "该设备不可借用（状态：" + status + "）");
-        return;
-    }
-    if (quantity <= 0) {
-        QMessageBox::warning(this, "错误", "该设备库存不足");
-        return;
-    }
-
-    // 减少库存
+    // 库存-1
     query.prepare("UPDATE equipment SET quantity = quantity - 1 WHERE id = ?");
     query.addBindValue(equipmentId);
     if (!query.exec()) {
+        db.rollback();
         QMessageBox::warning(this, "错误", "更新库存失败");
         return;
     }
-
-    // 添加借用记录
-    query.prepare("INSERT INTO borrow_return (equipment_id, borrower_name, borrow_date, purpose) "
-                  "VALUES (?, ?, datetime('now'), ?)");
+    // 插入借用记录
+    query.prepare("INSERT INTO borrow_return (equipment_id, borrower_name, borrow_date, purpose) VALUES (?, ?, datetime('now'), ?)");
     query.addBindValue(equipmentId);
-    query.addBindValue(borrower);
-    query.addBindValue(purpose);
-
+    query.addBindValue(borrower.trimmed());
+    query.addBindValue(purpose.trimmed());
     if (!query.exec()) {
+        db.rollback();
         QMessageBox::warning(this, "错误", "添加借用记录失败: " + query.lastError().text());
-        // 回滚库存
-        query.prepare("UPDATE equipment SET quantity = quantity + 1 WHERE id = ?");
-        query.addBindValue(equipmentId);
-        query.exec();
         return;
     }
-
-    // 借用成功后，更新设备状态为已借出
-    QSqlQuery updateQuery;
-    updateQuery.prepare("UPDATE equipment SET status = '已借出' WHERE id = ?");
-    updateQuery.addBindValue(equipmentId);
-    updateQuery.exec();
-
+    // 再查一次库存，若为0则设备状态设为已借出，否则仍为正常
+    query.prepare("SELECT quantity FROM equipment WHERE id = ?");
+    query.addBindValue(equipmentId);
+    if (!query.exec() || !query.next()) {
+        db.rollback();
+        QMessageBox::warning(this, "错误", "库存查询失败");
+        return;
+    }
+    int left = query.value(0).toInt();
+    QString newStatus = (left == 0) ? "已借出" : "正常";
+    query.prepare("UPDATE equipment SET status = ? WHERE id = ?");
+    query.addBindValue(newStatus);
+    query.addBindValue(equipmentId);
+    if (!query.exec()) {
+        db.rollback();
+        QMessageBox::warning(this, "错误", "更新设备状态失败");
+        return;
+    }
+    db.commit();
     refresh();
     QMessageBox::information(this, "成功", "设备借用成功");
 }
@@ -233,10 +240,10 @@ void BorrowReturnWidget::searchRecords() {
 
 void BorrowReturnWidget::showBorrowRanking() {
     QSqlQuery query;
+    // 修正SQL，字段名为model
     query.exec("SELECT e.name, e.model, COUNT(*) as borrow_count "
                "FROM borrow_return br "
                "LEFT JOIN equipment e ON br.equipment_id = e.id "
-               "WHERE br.equipment_id IS NOT NULL "
                "GROUP BY br.equipment_id "
                "ORDER BY borrow_count DESC "
                "LIMIT 5");

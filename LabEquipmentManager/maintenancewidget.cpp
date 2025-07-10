@@ -38,6 +38,7 @@ MaintenanceWidget::MaintenanceWidget(QWidget *parent) :
     connect(ui->scrapButton, &QPushButton::clicked, this, &MaintenanceWidget::scrapEquipment);
     connect(ui->searchButton, &QPushButton::clicked, this, &MaintenanceWidget::searchMaintenance);
     connect(ui->refreshButton, &QPushButton::clicked, this, &MaintenanceWidget::refresh);
+    connect(ui->deleteButton, &QPushButton::clicked, this, &MaintenanceWidget::deleteMaintenance);
 }
 
 MaintenanceWidget::~MaintenanceWidget()
@@ -323,4 +324,25 @@ void MaintenanceWidget::scrapEquipment() {
     refresh();
     QMessageBox::information(this, "成功", 
         QString("设备 %1 已报废\n报废原因: %2").arg(equipmentName).arg(scrapReason));
+}
+
+void MaintenanceWidget::deleteMaintenance() {
+    QModelIndex index = ui->tableView->currentIndex();
+    if (!index.isValid()) {
+        QMessageBox::warning(this, "警告", "请选择要删除的维修记录");
+        return;
+    }
+    int recordId = model->data(model->index(index.row(), 0)).toInt();
+    if (QMessageBox::question(this, "确认删除", "确定要删除该维修记录吗？此操作不可恢复！") != QMessageBox::Yes) {
+        return;
+    }
+    QSqlQuery query;
+    query.prepare("DELETE FROM maintenance WHERE id = ?");
+    query.addBindValue(recordId);
+    if (!query.exec()) {
+        QMessageBox::warning(this, "错误", "删除维修记录失败: " + query.lastError().text());
+        return;
+    }
+    refresh();
+    QMessageBox::information(this, "成功", "维修记录已删除");
 }

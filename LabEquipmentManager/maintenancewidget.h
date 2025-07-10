@@ -30,6 +30,7 @@ private slots:
     void completeMaintenance();
     void scrapEquipment();
     void searchMaintenance();
+    void deleteMaintenance();
 
 private:
     QSqlTableModel *model;
