@@ -58,10 +58,9 @@ void MaintenanceWidget::addMaintenance() {
     // 序列号
     QString serialNumber = QInputDialog::getText(this, "添加维修", "请输入设备序列号:", QLineEdit::Normal, "", &ok);
     if (!ok || serialNumber.isEmpty()) return;
-    // 查找设备ID
+    // 查找设备ID（只用序列号查找）
     QSqlQuery query;
-    query.prepare("SELECT id FROM equipment WHERE name = ? AND serial_number = ?");
-    query.addBindValue(equipmentName);
+    query.prepare("SELECT id FROM equipment WHERE serial_number = ?");
     query.addBindValue(serialNumber);
     if (!query.exec() || !query.next()) {
         QMessageBox::warning(this, "错误", "未找到对应设备");

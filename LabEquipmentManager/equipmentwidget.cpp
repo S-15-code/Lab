@@ -115,9 +115,9 @@ void EquipmentWidget::addEquipment() {
             .arg(purchaseYear)
             .arg(randomNumber, 4, 10, QLatin1Char('0')); // 确保4位，不足补零
 
-        // 设置各字段数据
-        model->setData(model->index(row, 1), name);          // name
-        model->setData(model->index(row, 2), deviceModel);   // model
+        // 設定各字段數據
+        model->setData(model->index(row, 1),name );          // name
+        model->setData(model->index(row, 2), deviceModel);   // device_model
         model->setData(model->index(row, 3), serialNumber);  // serial_number
         model->setData(model->index(row, 4), QDate::currentDate().toString("yyyy-MM-dd")); // 登记日期
         model->setData(model->index(row, 5), 1000.00);       // price
@@ -211,9 +211,9 @@ void EquipmentWidget::searchEquipment() {
         model->select();
         return;
     }
-    // 修正字段名为model
+    // 搜索設備時修正 device_model
     QSqlQuery query;
-    QString sql = "SELECT id FROM equipment WHERE name LIKE ? OR model LIKE ? OR serial_number LIKE ?";
+    QString sql = "SELECT id FROM equipment WHERE name LIKE ? OR device_model LIKE ? OR serial_number LIKE ?";
     query.prepare(sql);
     QString likeStr = "%" + keyword + "%";
     query.addBindValue(likeStr);

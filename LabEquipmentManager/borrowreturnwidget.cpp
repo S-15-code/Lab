@@ -57,9 +57,9 @@ void BorrowReturnWidget::borrowEquipment() {
     QString purpose = QInputDialog::getText(this, "借用设备", "请输入用途:", QLineEdit::Normal, "", &ok);
     if (!ok) return;
 
-    // 查询设备ID、数量、状态，字段名修正为model
+    // 查詢設備ID、數量、狀態，欄位名修正為 device_model
     QSqlQuery query;
-    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND model = ?");
+    query.prepare("SELECT id, quantity, status FROM equipment WHERE name = ? AND device_model = ?");
     query.addBindValue(equipmentName);
     query.addBindValue(equipmentModel);
     if (!query.exec() || !query.next()) {
@@ -184,13 +184,15 @@ void BorrowReturnWidget::searchRecords() {
         return;
     }
 
-    // 使用JOIN查询进行搜索
+    // 使用JOIN查询进行搜索，並修正 device_model 欄位
     QSqlQuery query;
     query.prepare(
         "SELECT DISTINCT br.id FROM borrow_return br "
         "LEFT JOIN equipment eq ON br.equipment_id = eq.id "
-        "WHERE eq.name LIKE ? OR br.borrower_name LIKE ?"
+        "WHERE eq.name LIKE ? OR eq.device_model LIKE ? OR eq.serial_number LIKE ? OR br.borrower_name LIKE ?"
     );
+    query.addBindValue("%" + keyword + "%");
+    query.addBindValue("%" + keyword + "%");
     query.addBindValue("%" + keyword + "%");
     query.addBindValue("%" + keyword + "%");
     
@@ -233,7 +235,7 @@ void BorrowReturnWidget::searchRecords() {
 
 void BorrowReturnWidget::showBorrowRanking() {
     QSqlQuery query;
-    query.exec("SELECT e.name, e.model, COUNT(*) as borrow_count "
+    query.exec("SELECT e.name, e.device_model, COUNT(*) as borrow_count "
                "FROM borrow_return br "
                "LEFT JOIN equipment e ON br.equipment_id = e.id "
                "WHERE br.equipment_id IS NOT NULL "

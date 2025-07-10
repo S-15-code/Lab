@@ -24,22 +24,22 @@ InventoryWidget::~InventoryWidget()
 }
 
 void InventoryWidget::refresh() {
-    model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY model");
+    model->setQuery("SELECT device_model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY device_model");
     ui->tableView->setModel(model);
     ui->statusLabel->setText("库存状态: 未检查");
 }
 
 void InventoryWidget::checkInventory() {
     QSqlQueryModel *warningModel = new QSqlQueryModel(this);
-    QString sql = "SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' "
-                  "FROM equipment GROUP BY model HAVING SUM(quantity) <= 2";
+    QString sql = "SELECT device_model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' "
+                  "FROM equipment GROUP BY device_model HAVING SUM(quantity) <= 2";
     warningModel->setQuery(sql);
 
     if (warningModel->rowCount() == 0) {
         ui->statusLabel->setText("库存状态: 所有设备型号库存充足");
         QMessageBox::information(this, "库存预警", "所有设备型号库存充足");
         // 显示全部型号库存
-        model->setQuery("SELECT model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY model");
+        model->setQuery("SELECT device_model AS '设备型号', MIN(name) AS '设备名称', SUM(quantity) AS '总库存', 2 AS '预警阈值' FROM equipment GROUP BY device_model");
         ui->tableView->setModel(model);
     } else {
         ui->statusLabel->setText("库存状态: 以下设备型号库存预警");
@@ -52,7 +52,7 @@ void InventoryWidget::checkInventory() {
 void InventoryWidget::showWarning() {
     QSqlQuery query;
     // 以设备型号为单位，统计总库存小于等于2的型号
-    query.exec("SELECT model, MIN(name), SUM(quantity) FROM equipment GROUP BY model HAVING SUM(quantity) <= 2");
+    query.exec("SELECT device_model, MIN(name), SUM(quantity) FROM equipment GROUP BY device_model HAVING SUM(quantity) <= 2");
     QVector<QVector<QString>> data;
     while (query.next()) {
         QVector<QString> row;

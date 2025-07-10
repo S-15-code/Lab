@@ -5,13 +5,16 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QMessageBox>
+#include <QDir>
 #include <QDebug>
 
 class Database {
 public:
     static bool initialize() {
+        qDebug() << "Current working directory:" << QDir::currentPath();
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
         db.setDatabaseName("lab_equipment.db");
+        qDebug() << "Database file path:" << db.databaseName();
 
         if (!db.open()) {
             QMessageBox::critical(nullptr, "Database Error", db.lastError().text());
