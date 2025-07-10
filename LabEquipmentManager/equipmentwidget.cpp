@@ -1,6 +1,5 @@
 #include "equipmentwidget.h"
 #include "ui_equipmentwidget.h"
-#include "statusitemdelegate.h"
 #include <QSqlQuery>
 #include <QDebug>
 #include "mainwindow.h"
@@ -56,8 +55,6 @@ EquipmentWidget::EquipmentWidget(QWidget *parent) :
     // connect(ui->scrapBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsScrapped);
     // connect(ui->borrowBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsBorrowed);
     // connect(ui->returnBtn, &QPushButton::clicked, this, &EquipmentWidget::markAsReturned);
-
-    ui->tableView->setItemDelegate(new StatusItemDelegate(this));
 }
 
 EquipmentWidget::~EquipmentWidget()

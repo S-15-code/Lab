@@ -28,15 +28,17 @@ InventoryWidget::~InventoryWidget()
 }
 
 void InventoryWidget::refresh() {
-    // 显示所有正常状态设备的型号分组统计，统计总库存
-    QString queryStr = "SELECT model AS '设备型号', "
-                       "MIN(name) AS '设备名称', "
-                       "SUM(quantity) AS '正常库存', "
-                       "2 AS '预警阈值' "
-                       "FROM equipment "
-                       "WHERE status = '正常' "
-                       "GROUP BY model "
-                       "ORDER BY SUM(quantity) ASC";  // 按库存升序排列
+    // 显示所有设备型号的库存统计，维修和报废算作正常库存为0，已借出台数为未归还数量
+    QString queryStr =
+        "SELECT e.model AS '设备型号', "
+        "MIN(e.name) AS '设备名称', "
+        "SUM(CASE WHEN e.status = '正常' THEN e.quantity ELSE 0 END) AS '正常库存', "
+        "SUM(CASE WHEN e.status = '维修中' OR e.status = '报废' THEN e.quantity ELSE 0 END) AS '维修/报废台数', "
+        "IFNULL((SELECT COUNT(1) FROM borrow_return br JOIN equipment eq2 ON br.equipment_id = eq2.id WHERE eq2.model = e.model AND br.return_date IS NULL), 0) AS '已借出台数', "
+        "2 AS '预警阈值' "
+        "FROM equipment e "
+        "GROUP BY e.model "
+        "ORDER BY SUM(CASE WHEN e.status = '正常' THEN e.quantity ELSE 0 END) ASC";
 
     model->setQuery(queryStr);
     if (model->lastError().isValid()) {
@@ -47,16 +49,18 @@ void InventoryWidget::refresh() {
 }
 
 void InventoryWidget::checkInventory() {
-    // 查询库存不足的设备型号（正常状态且总库存<=2）
-    QString warningQuery = "SELECT model AS '设备型号', "
-                           "MIN(name) AS '设备名称', "
-                           "SUM(quantity) AS '正常库存', "
-                           "2 AS '预警阈值' "
-                           "FROM equipment "
-                           "WHERE status = '正常' "
-                           "GROUP BY model "
-                           "HAVING SUM(quantity) <= 2 "
-                           "ORDER BY SUM(quantity) ASC";
+    // 所有设备型号都要考虑库存预警，只有正常状态台数>2的才不预警，维修/报废算作正常台数为0，已借出台数为未归还数量
+    QString warningQuery =
+        "SELECT e.model AS '设备型号', "
+        "MIN(e.name) AS '设备名称', "
+        "SUM(CASE WHEN e.status = '正常' THEN e.quantity ELSE 0 END) AS '正常库存', "
+        "SUM(CASE WHEN e.status = '维修中' OR e.status = '报废' THEN e.quantity ELSE 0 END) AS '维修/报废台数', "
+        "IFNULL((SELECT COUNT(1) FROM borrow_return br JOIN equipment eq2 ON br.equipment_id = eq2.id WHERE eq2.model = e.model AND br.return_date IS NULL), 0) AS '已借出台数', "
+        "2 AS '预警阈值' "
+        "FROM equipment e "
+        "GROUP BY e.model "
+        "HAVING SUM(CASE WHEN e.status = '正常' THEN e.quantity ELSE 0 END) <= 2 "
+        "ORDER BY SUM(CASE WHEN e.status = '正常' THEN e.quantity ELSE 0 END) ASC";
 
     QSqlQueryModel *warningModel = new QSqlQueryModel(this);
     warningModel->setQuery(warningQuery);

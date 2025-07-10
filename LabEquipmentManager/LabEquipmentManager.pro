@@ -17,7 +17,6 @@ SOURCES += \
     borrowreturnwidget.cpp \
     maintenancewidget.cpp \
     inventorywidget.cpp \
-    statusitemdelegate.cpp \
     logindialog.cpp
 
 HEADERS += \
@@ -27,7 +26,6 @@ HEADERS += \
     borrowreturnwidget.h \
     maintenancewidget.h \
     inventorywidget.h \
-    statusitemdelegate.h \
     logindialog.h
 
 FORMS += \

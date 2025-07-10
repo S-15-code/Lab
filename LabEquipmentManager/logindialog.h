@@ -2,13 +2,14 @@
 #define LOGINDIALOG_H
 
 #include <QDialog>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
 #include <QMessageBox>
 #include <QKeyEvent>
+#include <QFont>
 
 class LoginDialog : public QDialog
 {
@@ -36,4 +37,4 @@ private:
     bool loginSuccess;
 };
 
-#endif // LOGINDIALOG_H
+#endif // LOGINDIALOG_H 
