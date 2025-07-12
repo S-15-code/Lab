@@ -26,7 +26,7 @@ public:
     explicit EquipmentWidget(QWidget *parent = nullptr);
     ~EquipmentWidget();
     void refresh();
-    QSqlTableModel *model;
+    QSqlTableModel *model;//指向一个QSqlTableModel数据模型对象，作为数据与界面之间的桥梁，管理设备数据的增删改查
     void addMultipleEquipment(const QString& name, const QString& deviceModel, int quantity);
     QString generateSerialNumber(const QString& name, const QString& deviceModel, int index);
 

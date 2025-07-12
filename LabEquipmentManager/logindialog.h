@@ -17,7 +17,7 @@ class LoginDialog : public QDialog
 
 public:
     explicit LoginDialog(QWidget *parent = nullptr);
-    bool isLoginSuccessful() const { return loginSuccess; }
+    bool isLoginSuccessful() const { return loginSuccess; }//判断后，用于表示登录正确与否
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -27,8 +27,9 @@ private slots:
     void onCancelClicked();
 
 private:
-    void setupUI();
+    void setupUI();//初始化窗口
     bool validateUser(const QString &username, const QString &password);
+    //判断输入是否正确
 
     QLineEdit *usernameEdit;
     QLineEdit *passwordEdit;

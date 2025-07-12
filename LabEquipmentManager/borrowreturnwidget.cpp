@@ -7,10 +7,10 @@ BorrowReturnWidget::BorrowReturnWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    // 创建表格视图
+    //  创建并配置模型（数据层 + 转换逻辑）
     model = new QSqlRelationalTableModel(this);
-    model->setTable("borrow_return");
-    model->setRelation(1, QSqlRelation("equipment", "id", "name"));
+    model->setTable("borrow_return");//把模型绑定到该表
+    model->setRelation(1, QSqlRelation("equipment", "id", "name"));//设置外键关系：将第 1 列（索引从 0 开始）关联到 equipment 表的 id 字段，并显示 name 字段。
     model->setEditStrategy(QSqlTableModel::OnManualSubmit);
     model->setHeaderData(1, Qt::Horizontal, "设备名称");
     model->setHeaderData(2, Qt::Horizontal, "借用人");
@@ -19,6 +19,7 @@ BorrowReturnWidget::BorrowReturnWidget(QWidget *parent) :
     model->setHeaderData(5, Qt::Horizontal, "用途");
     model->select();
 
+    // 创建并配置视图（纯显示层）
     ui->tableView->setModel(model);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -38,13 +39,14 @@ BorrowReturnWidget::~BorrowReturnWidget()
 }
 
 void BorrowReturnWidget::refresh() {
-    model->setFilter(""); // 清除 filter
+    model->setFilter(""); // 清空可能的过滤条件
     if (!model->select()) {
         QMessageBox::warning(this, "错误", "刷新失败: " + model->lastError().text());
     }
 }
 void BorrowReturnWidget::borrowEquipment() {
     bool ok;
+    //快速创建一个文本输入对话框，获取信息
     QString equipmentName = QInputDialog::getText(this, "借用设备", "请输入设备名称:", QLineEdit::Normal, "", &ok);
     if (!ok || equipmentName.trimmed().isEmpty()) return;
     QString equipmentModel = QInputDialog::getText(this, "借用设备", "请输入设备型号:", QLineEdit::Normal, "", &ok);
@@ -54,12 +56,13 @@ void BorrowReturnWidget::borrowEquipment() {
     QString purpose = QInputDialog::getText(this, "借用设备", "请输入用途:", QLineEdit::Normal, "", &ok);
     if (!ok) return;
 
-    QSqlDatabase db = QSqlDatabase::database();
+    QSqlDatabase db = QSqlDatabase::database();//返回程序之前通过 addDatabase() 建立的默认数据库连接
     db.transaction();
-    QSqlQuery query(db);
+    QSqlQuery query(db);//创建该数据库的查询对象
     // 查找设备，忽略大小写和空格，且状态为正常且库存>0
     query.prepare("SELECT id, quantity FROM equipment WHERE TRIM(LOWER(name)) = TRIM(LOWER(?)) AND TRIM(LOWER(model)) = TRIM(LOWER(?)) AND status = '正常' AND quantity > 0");
-    query.addBindValue(equipmentName.trimmed().toLower());
+    //                    查询内容           查询来源          查询条件
+    query.addBindValue(equipmentName.trimmed().toLower());//绑定处理后的信息到查询位置
     query.addBindValue(equipmentModel.trimmed().toLower());
     if (!query.exec() || !query.next()) {
         db.rollback();
@@ -67,7 +70,7 @@ void BorrowReturnWidget::borrowEquipment() {
         QSqlQuery debugQuery(db);
         QString allEquipments;
         if (debugQuery.exec("SELECT name, device_model, status, quantity FROM equipment")) {
-            while (debugQuery.next()) {
+            while (debugQuery.next()) {//逐行遍历查询结果集
                 allEquipments += QString("名称:%1 型号:%2 状态:%3 库存:%4\n")
                     .arg(debugQuery.value(0).toString())
                     .arg(debugQuery.value(1).toString())
@@ -85,7 +88,7 @@ void BorrowReturnWidget::borrowEquipment() {
     int quantity = query.value(1).toInt();
 
     // 库存-1
-    query.prepare("UPDATE equipment SET quantity = quantity - 1 WHERE id = ?");
+    query.prepare("UPDATE equipment SET quantity = quantity - 1 WHERE id = ?");//更新设备表 库存数量减1 限定只更新指定ID的设备
     query.addBindValue(equipmentId);
     if (!query.exec()) {
         db.rollback();
@@ -126,12 +129,13 @@ void BorrowReturnWidget::borrowEquipment() {
 }
 
 void BorrowReturnWidget::returnEquipment() {
+    //获取当前选中行
     QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) {
         QMessageBox::warning(this, "警告", "请选择要归还的记录");
         return;
     }
-
+    // 获取借还记录ID
     int recordId = model->data(model->index(index.row(), 0)).toInt();
     // 正确获取equipment_id
     QSqlQuery query;
@@ -191,12 +195,12 @@ void BorrowReturnWidget::searchRecords() {
         return;
     }
 
-    // 使用JOIN查询进行搜索
+    // 使用JOIN查询进行搜索:JOIN查询返回的是复杂的结果集
     QSqlQuery query;
     query.prepare(
         "SELECT DISTINCT br.id FROM borrow_return br "
         "LEFT JOIN equipment eq ON br.equipment_id = eq.id "
-        "WHERE eq.name LIKE ? OR br.borrower_name LIKE ?"
+        "WHERE eq.name LIKE ? OR br.borrower_name LIKE ?"//eq.name OR br.borrower_name
     );
     query.addBindValue("%" + keyword + "%");
     query.addBindValue("%" + keyword + "%");
@@ -208,8 +212,8 @@ void BorrowReturnWidget::searchRecords() {
     
     // 收集匹配的记录ID
     QList<int> matchingIds;
-    while (query.next()) {
-        matchingIds.append(query.value(0).toInt());
+    while (query.next()) {//遍历查询结果
+        matchingIds.append(query.value(0).toInt());//query.value(0)	获取当前行第一列（对应SQL中的br.id）
     }
     
     if (matchingIds.isEmpty()) {
@@ -217,7 +221,8 @@ void BorrowReturnWidget::searchRecords() {
         return;
     }
     
-    // 构建ID过滤器
+    // 构建ID过滤器：将复杂的跨表JOIN查询结果转换为简单的单表过滤条件
+    //borrow_return.id IN (1,5,8)精确批量筛选所需要的信息记录
     QString idFilter = "borrow_return.id IN (";
     for (int i = 0; i < matchingIds.size(); ++i) {
         if (i > 0) idFilter += ",";
@@ -240,13 +245,13 @@ void BorrowReturnWidget::searchRecords() {
 
 void BorrowReturnWidget::showBorrowRanking() {
     QSqlQuery query;
-    // 统计所有有关联设备的借用记录，按设备分组
+    // 按设备名称和型号分组，累计借用次数
     query.exec(
         "SELECT e.name, e.model, COUNT(br.id) as borrow_count "
         "FROM borrow_return br "
         "LEFT JOIN equipment e ON br.equipment_id = e.id "
         "WHERE e.name IS NOT NULL AND e.model IS NOT NULL "
-        "GROUP BY br.equipment_id "
+        "GROUP BY e.name, e.model "
         "ORDER BY borrow_count DESC "
         "LIMIT 5"
     );

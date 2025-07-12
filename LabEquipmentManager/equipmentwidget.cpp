@@ -112,7 +112,7 @@ void EquipmentWidget::addEquipment() {
 
     // 5. 开始事务处理
     QSqlDatabase::database().transaction();
-
+    //实现了批量添加
     for (int i = 0; i < quantity; ++i) {
         int row = model->rowCount();
         model->insertRow(row);
@@ -148,7 +148,8 @@ void EquipmentWidget::addEquipment() {
         QMessageBox::warning(this, "错误", "添加失败: " + model->lastError().text());
     }
 }
-void EquipmentWidget::addMultipleEquipment(const QString& name,const QString& deviceModel,int quantity) {
+//多余
+/*void EquipmentWidget::addMultipleEquipment(const QString& name,const QString& deviceModel,int quantity) {
     QSqlDatabase::database().transaction();
     int i=0;
     for (i = 0; i < quantity; ++i) {
@@ -174,6 +175,7 @@ void EquipmentWidget::addMultipleEquipment(const QString& name,const QString& de
         QSqlDatabase::database().commit();
     }
 }
+*/
 void EquipmentWidget::editEquipment() {
     QModelIndex index = ui->tableView->currentIndex();
         if (!index.isValid()) {
@@ -188,13 +190,15 @@ void EquipmentWidget::editEquipment() {
             QMessageBox::warning(this, "错误", "保存失败: " + model->lastError().text());
         }
 }
-QString EquipmentWidget::generateSerialNumber(const QString& name, const QString& deviceModel, int index) {
+//多余
+/*QString EquipmentWidget::generateSerialNumber(const QString& name, const QString& deviceModel, int index) {
     return QString("%1-%2-%3-%4")
         .arg(QDate::currentDate().toString("yyyyMMdd"))
         .arg(name.left(2).toUpper())
         .arg(deviceModel)
         .arg(index, 4, 10, QLatin1Char('0'));
 }
+*/
 void EquipmentWidget::deleteEquipment() {
     QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid()) return;
@@ -234,6 +238,7 @@ void EquipmentWidget::searchEquipment() {
         QMessageBox::warning(this, "错误", "搜索失败: " + query.lastError().text() + "\nSQL: " + sql);
         return;
     }
+    //收集查询结果
     QStringList idList;
     while (query.next()) {
         idList << query.value(0).toString();
@@ -244,6 +249,7 @@ void EquipmentWidget::searchEquipment() {
         model->select();
         return;
     }
+    //构建过滤器
     QString filter = QString("id IN (%1)").arg(idList.join(","));
     model->setFilter(filter);
     model->select();
@@ -282,7 +288,7 @@ void EquipmentWidget::showStatistics() {
     QSqlQuery query;
     // 统计设备总数
     int total = 0;
-    if (query.exec("SELECT COUNT(*) FROM equipment")) {
+    if (query.exec("SELECT COUNT(*) FROM equipment")) {//查询结果：返回一个包含单个值的表
         if (query.next()) total = query.value(0).toInt();
     }
     // 统计各状态数量
@@ -294,7 +300,7 @@ void EquipmentWidget::showStatistics() {
     }
     QString statText = QString("设备总数：%1\n").arg(total);
     for (auto it = statusMap.begin(); it != statusMap.end(); ++it) {
-        statText += QString("%1：%2\n").arg(it.key()).arg(it.value());
+        statText += QString("%1：%2\n").arg(it.key()).arg(it.value());//将状态统计信息追加到总文本中
     }
     QMessageBox::information(this, "设备统计", statText);
 }

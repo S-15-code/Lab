@@ -77,8 +77,8 @@ void MaintenanceWidget::addMaintenance() {
         QMessageBox::warning(this, "错误", "查询设备状态失败");
         return;
     }
-    QString equipmentStatus = query.value(0).toString();
-    
+    QString equipmentStatus = query.value(0).toString();//query.value(0)查询结果的第0列 这里只查询了状态
+   // ////////////////////////////////////////////////////////////
     if (equipmentStatus == "报废") {
         QMessageBox::warning(this, "错误", "该设备已报废，无法进行维修");
         return;
